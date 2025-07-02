@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <title>工作记录系统</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link href="../../dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    .badge-status { min-width: 80px; font-weight: 500; letter-spacing: 1px; border-radius: 0.5em; }
+    .badge.bg-warning, .badge.bg-light, .badge.bg-secondary, .badge.bg-dark {
+      color: #212529 !important;
+      border: 1px solid #dee2e6;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+      background-image: linear-gradient(90deg, #f8f9fa 60%, #e9ecef 100%);
+    }
+    .badge.bg-warning { background-color: #ffe082 !important; }
+    .badge.bg-secondary { background-color: #e2e3e5 !important; }
+    .badge.bg-dark { background-color: #bdbdbd !important; }
+    .table-hover tbody tr:hover { background-color: #f8f9fa; }
+    .file-link { text-decoration: none; margin-right: 10px; }
+    .dict-link {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      z-index: 1000;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      border-radius: 50px;
+      padding: 12px 20px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+      transition: all 0.3s ease;
+      text-decoration: none;
+      font-weight: 500;
+    }
+    .dict-link:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+      color: white;
+      text-decoration: none;
+    }
+  </style>
+</head>
+<body>
+<div class="container my-5">
+  <h2 class="mb-4">🧾 工作记录系统</h2>
+  <ul class="nav nav-tabs" id="recordTabs" role="tablist">
+    <!-- 删除Bug修复标签 -->
+    <li class="nav-item" role="presentation">
+      <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#work">📁 工作记录</button>
+    </li>
+    <li class="nav-item">
+      <button class="nav-link" data-bs-toggle="tab" data-bs-target="#progress">📌 需求进展</button>
+    </li>
+    <li class="nav-item">
+      <button class="nav-link" data-bs-toggle="tab" data-bs-target="#issue">🧠 高频问题</button>
+    </li>
+    <li class="nav-item">
+      <button class="nav-link" data-bs-toggle="tab" data-bs-target="#stats">📊 统计</button>
+    </li>
+  </ul>
+
+  <div class="tab-content mt-4" id="tabContent"></div>
+</div>
+
+<!-- 字典维护浮动按钮 -->
+<a href="dict_maintenance.html" class="dict-link">
+  ⚙️ 字典维护
+</a>
+
+<script src="../../dist/js/jquery-3.7.1.min.js"></script>
+<script src="../../dist/js/bootstrap.bundle.min.js"></script>
+<script src="../../dist/js/axios.min.js"></script>
+<script src="common/util.js"></script>
+<script src="common/api.js"></script>
+<script>
+const statusStyle = {
+  '需求确认中': 'bg-secondary',        // 灰色
+  '业务方案编制中': 'bg-info',         // 浅蓝色
+  '详细设计方案编制中': 'bg-primary',  // 蓝色
+  '开发中': 'bg-warning',             // 黄色
+  '测试中': 'bg-danger',              // 红色
+  '业务确认中': 'bg-light',           // 浅灰
+  '待上线': 'bg-dark',                // 深灰
+  '已上线': 'bg-success',             // 绿色
+  '进行中': 'bg-primary'              // 蓝色
+};
+const tabFiles = {
+  work: 'work_tab_work.html',
+  progress: 'work_tab_requirement.html',
+  issue: 'work_tab_issue.html',
+  stats: 'work_tab_stats.html'
+};
+function loadTab(tab) {
+  // 清理之前的模态框，避免重复弹出
+  $('.modal').remove();
+  $('#tabContent').load(tabFiles[tab], function() {
+    if (window[`initTab_${tab}`]) window[`initTab_${tab}`]();
+  });
+}
+$(function() {
+  loadTab('work');
+  $('#recordTabs .nav-link').click(function(e) {
+    e.preventDefault();
+    $('#recordTabs .nav-link').removeClass('active');
+    $(this).addClass('active');
+    const tab = $(this).data('bsTarget')?.replace('#','') || $(this).data('tab');
+    loadTab(tab);
+  });
+});
+</script>
+</body>
+</html> 

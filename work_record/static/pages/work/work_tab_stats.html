@@ -1,0 +1,98 @@
+<div class="row" id="statsCards"></div>
+<div class="row" id="ticketStatsCards"></div>
+<script src="../../dist/js/sweetalert2.all.min.js"></script>
+<script>
+function renderStats() {
+  // 删除总需求数和未关闭问题的统计
+  $('#statsCards').html('');
+
+  // 新增：工单统计
+  axios.get('http://127.0.0.1:1994/ticket/get_ticket_count_statistics_by_employee_code?employee_code=500958').then(res => {
+    const d = res.data || {};
+    $('#ticketStatsCards').html(`
+      <div class="col-md-3 mb-3">
+        <div class="card border-0 shadow-sm h-100">
+          <div class="card-body text-center">
+            <div class="mb-2" style="font-size:2.2em;color:#007bff;"><i class="bi bi-person-badge"></i></div>
+            <div class="fw-bold" style="font-size:1.2em;">工号</div>
+            <div class="fs-5 text-primary">${d.employee_code || '-'}</div>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-3 mb-3">
+        <div class="card border-0 shadow-sm h-100 bg-success text-white">
+          <div class="card-body text-center">
+            <div class="mb-2" style="font-size:2.2em;"><i class="bi bi-calendar-week"></i></div>
+            <div class="fw-bold" style="font-size:1.2em;">本周处理工单数</div>
+            <div class="fs-5">${d.week_count || 0}</div>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-3 mb-3">
+        <div class="card border-0 shadow-sm h-100 bg-info text-white">
+          <div class="card-body text-center">
+            <div class="mb-2" style="font-size:2.2em;"><i class="bi bi-calendar-event"></i></div>
+            <div class="fw-bold" style="font-size:1.2em;">本月处理工单数</div>
+            <div class="fs-5">${d.month_count || 0}</div>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-3 mb-3">
+        <div class="card border-0 shadow-sm h-100 bg-primary text-white">
+          <div class="card-body text-center">
+            <div class="mb-2" style="font-size:2.2em;"><i class="bi bi-calendar-range"></i></div>
+            <div class="fw-bold" style="font-size:1.2em;">本年处理工单数</div>
+            <div class="fs-5">${d.year_count || 0}</div>
+          </div>
+        </div>
+      </div>
+    `);
+  }).catch(()=>{
+    // 接口报错也显示空卡片
+    $('#ticketStatsCards').html(`
+      <div class="col-md-3 mb-3">
+        <div class="card border-0 shadow-sm h-100">
+          <div class="card-body text-center">
+            <div class="mb-2" style="font-size:2.2em;color:#007bff;"><i class="bi bi-person-badge"></i></div>
+            <div class="fw-bold" style="font-size:1.2em;">工号</div>
+            <div class="fs-5 text-primary">-</div>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-3 mb-3">
+        <div class="card border-0 shadow-sm h-100 bg-success text-white">
+          <div class="card-body text-center">
+            <div class="mb-2" style="font-size:2.2em;"><i class="bi bi-calendar-week"></i></div>
+            <div class="fw-bold" style="font-size:1.2em;">本周处理工单数</div>
+            <div class="fs-5">0</div>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-3 mb-3">
+        <div class="card border-0 shadow-sm h-100 bg-info text-white">
+          <div class="card-body text-center">
+            <div class="mb-2" style="font-size:2.2em;"><i class="bi bi-calendar-event"></i></div>
+            <div class="fw-bold" style="font-size:1.2em;">本月处理工单数</div>
+            <div class="fs-5">0</div>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-3 mb-3">
+        <div class="card border-0 shadow-sm h-100 bg-primary text-white">
+          <div class="card-body text-center">
+            <div class="mb-2" style="font-size:2.2em;"><i class="bi bi-calendar-range"></i></div>
+            <div class="fw-bold" style="font-size:1.2em;">本年处理工单数</div>
+            <div class="fs-5">0</div>
+          </div>
+        </div>
+      </div>
+    `);
+  });
+}
+function initTab_stats() {
+  renderStats();
+}
+</script>
+
+<!-- 引入Bootstrap图标库 -->
+<link rel="stylesheet" href="../../dist/font/bootstrap-icons.min.css">

@@ -1,0 +1,660 @@
+<link rel="stylesheet" href="../../dist/font/bootstrap-icons.css">
+<div>
+  <div class="d-flex justify-content-between mb-3">
+    <div class="btn-group btn-group-sm" role="group"><button type="button" class="btn btn-outline-primary" data-scope="month">本月</button>
+      <button type="button" class="btn btn-outline-primary active" data-scope="year">本年</button>
+      <button type="button" class="btn btn-outline-primary" data-scope="all">全部</button></div>
+    <div class="d-flex align-items-center gap-2">
+      <label class="form-label mb-0">需求</label>
+      <select id="requirementFilter" class="form-select form-select-sm" style="width:140px"></select>
+      <label class="form-label mb-0 ms-2">状态</label>
+      <select id="statusFilter" class="form-select form-select-sm" style="width:120px"></select>
+      <label class="form-label mb-0 ms-2">来源</label>
+      <select id="sourceTypeFilter" class="form-select form-select-sm" style="width:120px"></select>
+      <label class="form-label mb-0 ms-2">影响</label>
+      <select id="affectedFilter" class="form-select form-select-sm" style="width:120px"></select>
+      <label class="form-label mb-0 ms-2">类型</label>
+      <select id="workTypeFilter" class="form-select form-select-sm" style="width:120px"></select>
+    </div>
+    <button class="btn btn-primary" id="newRecord" title="新建"><i class="bi bi-file-earmark-plus"></i></button>
+  </div>
+  <div id="workTableWrap"></div>
+  <div class="d-flex justify-content-end align-items-center mt-3 gap-3">
+    <nav id="workPagination" class="mb-0"></nav>
+    <div class="d-flex align-items-center gap-2">
+      <label class="form-label mb-0">每页</label>
+      <select id="pageSize" class="form-select form-select-sm" style="width:80px">
+        <option value="10">10</option>
+        <option value="20" selected>20</option>
+        <option value="50">50</option>
+      </select>
+      <span class="text-muted small">条</span>
+    </div>
+  </div>
+</div>
+<script src="../../dist/js/sweetalert2.all.min.js"></script>
+<script>
+var workScope = 'year', workPage = 1, workPageSize = 20, workStatus = '', workAffected = '', workSourceType = '', workRequirement = '', workType = '';
+function loadStatusOptions() {
+  axios.get('/api/work_record_status_dict').then(res => {
+    const list = res.data || [];
+    let html = '<option value="">全部状态</option>';
+    for(const s of list) {
+      html += `<option value="${s.id}">${s.status_name}</option>`;
+    }
+    $('#statusFilter').html(html);
+  });
+}
+function loadAffectedOptions() {
+  axios.get('/api/dict', {params:{table:'affected_type_dict'}}).then(res => {
+    let html = '<option value="">全部影响</option>';
+    for(const s of res.data) {
+      let text = s.affected || s.type || s.name || '';
+      html += `<option value="${s.id}">${text}</option>`;
+    }
+    $('#affectedFilter').html(html);
+  });
+}
+function loadSourceTypeOptions() {
+  axios.get('/api/dict', {params:{table:'source_type_dict'}}).then(res => {
+    let html = '<option value="">全部来源</option>';
+    for(const s of res.data) {
+      let text = s.type || s.name || '';
+      html += `<option value="${s.id}">${text}</option>`;
+    }
+    $('#sourceTypeFilter').html(html);
+  });
+}
+function loadRequirementFilterOptions() {
+  axios.get('/api/requirement_records').then(res => {
+    let html = '<option value="">全部需求</option>';
+    const records = res.data.records || res.data; // 兼容分页结构和老结构
+    for(const r of records) html += `<option value="${r.id}">${r.title}</option>`;
+    $('#requirementFilter').html(html);
+  });
+}
+function loadWorkTypeOptions() {
+  axios.get('/api/dict', {params:{table:'work_type_dict'}}).then(res => {
+    let html = '<option value="">全部类型</option>';
+    for(const s of res.data) {
+      let text = s.type || s.name || '';
+      html += `<option value="${s.id}">${text}</option>`;
+    }
+    $('#workTypeFilter').html(html);
+  });
+}
+function loadWorkRecords() {
+  axios.get('/api/work_records', {
+    params: { scope: workScope, page: workPage, page_size: workPageSize, status_id: workStatus, affected_id: workAffected, source_type_id: workSourceType, requirement_id: workRequirement, work_type_id: workType }
+  }).then(res => {
+    const { records, total, page, page_size } = res.data;
+    // 表头顺序：序号、内容、类型、状态、来源、影响、关联需求、完成人、创建时间、文件、操作
+    let html = `<table class="table table-hover align-middle"><thead><tr>
+      <th style="width: 60px">序号</th><th style="width: 200px">内容</th><th style="width: 80px">类型</th><th style="width: 80px">状态</th><th style="width: 80px">来源</th><th style="width: 80px">影响</th><th style="width: 120px">关联需求</th><th style="width: 80px">完成人</th><th style="width: 100px">创建时间</th><th style="width: 320px">文件</th><th style="width: 120px">操作</th></tr></thead><tbody>`;
+    if (!records || records.length === 0) {
+      html += '<tr><td colspan="11" class="text-center text-muted">暂无数据</td></tr>';
+    } else {
+      let startIdx = (page-1)*page_size+1;
+      for (let i=0; i<records.length; i++) {
+        const r = records[i];
+        html += `<tr><td>${startIdx+i}</td><td style="max-width: 200px; word-wrap: break-word; white-space: normal;">${r.work_content||''}</td><td>${r.work_type||''}</td>`;
+        html += `<td><span class="badge badge-status ${r.status_class||''}">${r.status_name||''}</span></td>`;
+        html += `<td style="max-width: 80px; word-wrap: break-word; white-space: normal;">${r.source_type_name||''}</td><td style="max-width: 80px; word-wrap: break-word; white-space: normal;">${r.affected_name||''}</td><td style="max-width: 120px; word-wrap: break-word; white-space: normal;">${r.requirement_title||''}</td>`;
+        html += `<td style="max-width: 80px; word-wrap: break-word; white-space: normal;">${r.employee_name||''}</td><td>${(r.create_time||'').slice(0,10)}</td><td style="font-size:0.95em; max-width: 320px;">`;
+        if (r.files && Object.keys(r.files).length) {
+          let fileLinks = Object.values(r.files).map(f => `
+            <span class="file-link-wrap position-relative group" style="display:inline-block;">
+              <a class="file-link" style="max-width: 300px; display: inline-block; word-wrap: break-word; white-space: normal;" href="/api/download?path=${encodeURIComponent(f.path)}&filename=${encodeURIComponent(f.name)}" download="${f.name}">${f.name}</a>
+              <span class="file-del-x" data-fileid="${f.id}" style="display:inline;position:absolute;right:-18px;top:2px;color:#dc3545;cursor:pointer;font-size:1.1em;opacity:0;transition:opacity 0.15s;">×</span>
+            </span>`).join('<br>');
+          html += fileLinks;
+        }
+        html += '</td>';
+        html += `<td style="vertical-align:middle;">
+          <button class="btn btn-outline-info btn-sm btn-upload ms-1" data-id="${r.id}" title="上传文件"><i class="bi bi-upload"></i></button>
+          <button class="btn btn-sm btn-outline-primary btn-action btn-edit ms-1" data-id="${r.id}" title="修改"><i class="bi bi-pencil"></i></button>
+          <button class="btn btn-sm btn-outline-danger btn-action btn-del ms-1" data-id="${r.id}" title="删除"><i class="bi bi-trash"></i></button>
+        </td></tr>`;
+      }
+    }
+    html += '</tbody></table>';
+    $('#workTableWrap').html(html);
+    // 分页
+    let pageCount = Math.ceil(total/page_size);
+    let pagHtml = `<ul class="pagination pagination-sm mb-0">`;
+    for(let i=1;i<=pageCount;i++) {
+      pagHtml += `<li class="page-item${i===page?' active':''}"><a class="page-link" href="#">${i}</a></li>`;
+    }
+    pagHtml += '</ul>';
+    $('#workPagination').html(pagHtml);
+    $('#workPagination .page-link').off('click').on('click',function(e){
+      e.preventDefault();
+      workPage = parseInt($(this).text());
+      loadWorkRecords();
+    });
+    // 文件删除按钮事件绑定（主表格内）
+    $('#workTableWrap').off('click', '.file-del-x').on('click', '.file-del-x', function(){
+      const fileId = $(this).data('fileid');
+      if (!fileId) return;
+      Swal.fire({
+        title: "确定删除该文件？",
+        icon: "warning",
+        showCancelButton: true,
+        confirmButtonColor: "#3085d6",
+        cancelButtonColor: "#d33",
+        confirmButtonText: "确认删除",
+        cancelButtonText: "取消"
+      }).then((result) => {
+        if (result.isConfirmed) {
+          axios.delete('/api/file/' + fileId)
+            .then(()=>{
+              showSwalToast('success', '文件已删除', 1500);
+              loadWorkRecords();
+            })
+            .catch(err=>{
+              showSwalToast('error', err?.response?.data?.error||'删除失败', 2000);
+            });
+        }
+      });
+    });
+  });
+}
+// 操作栏事件
+  $('#workTableWrap').off('click', '.btn-del').on('click', '.btn-del', function(){
+    const id = $(this).data('id');
+    Swal.fire({
+      title: "确定删除？",
+      text: "删除后无法恢复！",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#3085d6",
+      cancelButtonColor: "#d33",
+      confirmButtonText: "确认删除",
+      cancelButtonText: "取消",
+      customClass: {
+        popup: 'swal-sm-popup',
+        title: 'swal-sm-title',
+        htmlContainer: 'swal-sm-text',
+        confirmButton: 'swal-sm-button',
+        cancelButton: 'swal-sm-button'
+      }
+    }).then((result) => {
+      if (result.isConfirmed) {
+        axios.delete('/api/work_record/'+id)
+          .then(()=>{
+            showSwalToast('success', '已删除', 1500);
+            loadWorkRecords();
+          })
+          .catch(err=>{
+            showSwalToast('error', err?.response?.data?.error||'删除失败', 2000);
+          });
+      }
+    });
+  });
+  $('#workTableWrap').off('click', '.btn-upload').on('click', '.btn-upload', function(){
+    const id = $(this).data('id');
+    const fileInput = $('<input type="file" multiple style="display:none">');
+    fileInput.on('change', function(){
+      const files = this.files;
+      if(files.length){
+        const formData = new FormData();
+        for(let f of files) formData.append('files', f);
+        axios.post('/api/work_record/'+id+'/upload', formData)
+          .then(()=>{
+            showSwalToast('success', '上传成功', 1500);
+            loadWorkRecords();
+          })
+          .catch(err=>{
+            showSwalToast('error', err?.response?.data?.error || '上传失败', 2000);
+          });
+      }
+    });
+    fileInput.trigger('click');
+  });
+  $('#workTableWrap').off('click', '.btn-edit').on('click', '.btn-edit', function(){
+    const id = $(this).data('id');
+    axios.get('/api/work_records', {params: {id}}).then(res => {
+      const r = res.data.records && res.data.records.length ? res.data.records[0] : null;
+      if (!r) { showToast('未找到该记录', 'danger'); return; }
+      const $modal = $('#newRecordModal');
+      const formEl = $modal.find('#newRecordForm')[0];
+      if (formEl && typeof formEl.reset === 'function') formEl.reset();
+      $modal.find('.modal-title').text('修改工作记录');
+      $modal.find('[name=id]').val(r.id); // 只保留一个id
+      Promise.all([
+        loadRequirementOptions($modal.find('[name=requirement_id]')),
+        loadDictToSelect('work_type_dict', $modal.find('[name=work_type_id]')),
+        loadDictToSelect('affected_type_dict', $modal.find('[name=affected_id]')),
+        loadDictToSelect('source_type_dict', $modal.find('[name=source_type_id]')),
+        loadDictToSelect('work_record_status_dict', $modal.find('[name=work_record_status_id]')),
+        loadDepartmentOptions($modal.find('[name=department_id]'), r.department_id)
+      ]).then(()=>{
+        setTimeout(()=>{
+          $modal.find('[name=requirement_id]').val(r.requirement_id).trigger('change');
+          $modal.find('[name=work_type_id]').val(r.work_type_id).trigger('change');
+          $modal.find('[name=affected_id]').val(r.affected_id).trigger('change');
+          $modal.find('[name=source_type_id]').val(r.source_type_id).trigger('change');
+          $modal.find('[name=work_record_status_id]').val(r.work_record_status_id).trigger('change');
+          $modal.find('[name=department_id]').val(r.department_id).trigger('change');
+          // 先加载员工下拉再回显
+          loadEmployeeOptionsByDept($modal.find('[name=employee_id]'), r.department_id, r.employee_id);
+        }, 100);
+      });
+      $modal.find('[name=work_content]').val(r.work_content);
+      // 文件回显
+      let editFileList = [];
+      let deleteFileIds = [];
+      if(r.files && Object.keys(r.files).length){
+        for(const f of Object.values(r.files)){
+          editFileList.push({id: f.id, name: f.name});
+        }
+      }
+      $modal.data('editFileList', editFileList);
+      $modal.data('deleteFileIds', deleteFileIds);
+      $modal.data('uploadFiles', []);
+      renderUploadFileList_edit($modal);
+      $modal.modal('show');
+      // 绑定删除文件事件（只前端移除）
+      $modal.find('#uploadFileList').off('click', '.file-del-x').on('click', '.file-del-x', function(){
+        const fileId = $(this).data('fileid');
+        const idx = $(this).data('idx');
+        let editFileList = $modal.data('editFileList') || [];
+        let deleteFileIds = $modal.data('deleteFileIds') || [];
+        let uploadFiles = $modal.data('uploadFiles') || [];
+        if(fileId){ // 删除已存在文件
+          if(confirm('确定要删除该文件吗？')){
+            deleteFileIds.push(fileId);
+            editFileList = editFileList.filter(f=>f.id!=fileId);
+            $modal.data('editFileList', editFileList);
+            $modal.data('deleteFileIds', deleteFileIds);
+            renderUploadFileList_edit($modal);
+          }
+        }else if(typeof idx!=='undefined'){ // 删除新上传文件
+          uploadFiles.splice(idx,1);
+          $modal.data('uploadFiles', uploadFiles);
+          renderUploadFileList_edit($modal);
+        }
+      });
+      // 绑定新文件选择
+      $modal.find('#newRecordFileInput').off('change').on('change', function(){
+        let uploadFiles = $modal.data('uploadFiles') || [];
+        for(let f of this.files) uploadFiles.push(f);
+        $modal.data('uploadFiles', uploadFiles);
+        renderUploadFileList_edit($modal);
+        this.value = '';
+      });
+      // 绑定保存按钮
+      $('#submitNewRecord').off('click').on('click', function(){
+        const $form = $('#newRecordForm')[0];
+        if(!$form.checkValidity()){ $form.reportValidity(); return; }
+        const formData = new FormData($form);
+        let uploadFiles = $modal.data('uploadFiles') || [];
+        for(let f of uploadFiles) formData.append('files', f);
+        let deleteFileIds = $modal.data('deleteFileIds') || [];
+        if(deleteFileIds.length) formData.append('delete_file_ids', deleteFileIds.join(','));
+        // 新增：如果 id 为空，删除 id 字段，避免传递空 id 给后端
+        if (!formData.get('id')) formData.delete('id');
+        const isEdit = formData.get('id');
+        const url = isEdit ? '/api/update_work_record' : '/api/get_work_records';
+        axios.post(url, formData)
+          .then(()=>{
+            showSwalToast('success', isEdit ? '修改成功' : '新建成功', 1500);
+            $('#newRecordModal').modal('hide');
+            loadWorkRecords();
+            uploadFiles = [];
+          })
+          .catch(err=>{
+            showSwalToast('error', err?.response?.data?.error||(isEdit?'修改失败':'新建失败'), 2000);
+          });
+      });
+      // 监听部门下拉change事件
+      $modal.find('[name=department_id]').off('change').on('change', function() {
+        const deptId = $(this).val();
+        loadEmployeeOptionsByDept($modal.find('[name=employee_id]'), deptId, null);
+      });
+    });
+  });
+// 新增：弹窗文件回显渲染函数，合并已存在和新上传
+function renderUploadFileList_edit($modal){
+  const $list = $modal.find('#uploadFileList');
+  $list.empty();
+  let editFileList = $modal.data('editFileList') || [];
+  let uploadFiles = $modal.data('uploadFiles') || [];
+  editFileList.forEach(f=>{
+    $list.append(`<span class="badge bg-secondary me-2 mb-1">${f.name} <span class="file-del-x" style="cursor:pointer;" data-fileid="${f.id}">×</span></span>`);
+  });
+  uploadFiles.forEach((f,i)=>{
+    $list.append(`<span class="badge bg-secondary me-2 mb-1">${f.name} <span class="file-del-x" style="cursor:pointer;" data-idx="${i}">×</span></span>`);
+  });
+}
+// 新建记录模态框
+if (!$('#newRecordModal').length) {
+  $('body').append(`
+<div class="modal fade" id="newRecordModal" tabindex="-1">
+  <div class="modal-dialog modal-lg"><div class="modal-content">
+    <div class="modal-header"><h5 class="modal-title">新建工作记录</h5>
+      <button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+    <div class="modal-body">
+      <form id="newRecordForm">
+        <input type="hidden" name="id" />
+        <div class="row g-3">
+          <div class="col-md-6"><label class="form-label">需求</label><select name="requirement_id" class="form-select" required></select></div>
+          <div class="col-md-4"><label class="form-label">类型</label><select name="work_type_id" class="form-select" required></select></div>
+          <div class="col-md-4"><label class="form-label">来源</label><select name="source_type_id" class="form-select" required></select></div>
+          <div class="col-md-4"><label class="form-label">影响</label><select name="affected_id" class="form-select" required></select></div>
+          <div class="col-md-4"><label class="form-label">状态</label><select name="work_record_status_id" class="form-select" required></select></div>
+          <div class="col-md-4"><label class="form-label">部门</label><select name="department_id" class="form-select" required></select></div>
+          <div class="col-md-4"><label class="form-label">完成人</label><select name="employee_id" class="form-select" required></select></div>
+          <div class="col-md-8"><label class="form-label">内容</label><input name="work_content" class="form-control" required></div>
+          <div class="col-12"><label class="form-label">上传文件</label>
+            <div id="uploadFileList" class="mb-2"></div>
+            <input type="file" id="newRecordFileInput" class="form-control" multiple></div>
+        </div>
+      </form>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+      <button type="button" class="btn btn-primary" id="submitNewRecord">提交</button>
+    </div>
+  </div></div>
+</div>`);
+}
+
+function loadDictToSelect(table, $select) {
+  if (table === 'employees') {
+    axios.get('/api/employees').then(res=>{
+      let html = '<option value="">请选择</option>';
+      for(const emp of res.data) {
+        html += `<option value="${emp.id}">${emp.name} (${emp.employee_number})</option>`;
+      }
+      $select.html(html);
+    });
+  } else {
+  axios.get('/api/dict', {params:{table}}).then(res=>{
+    let html = '<option value="">请选择</option>';
+    for(const d of res.data) {
+      let text = d.type || d.affected || d.status_name || d.progress || d.status || '';
+      html += `<option value="${d.id}">${text}</option>`;
+    }
+    $select.html(html);
+  });
+  }
+}
+function loadRequirementOptions($select) {
+  axios.get('/api/requirement_records').then(res=>{
+    let html = '<option value="">请选择</option>';
+    const records = res.data.records || res.data; // 兼容分页结构和老结构
+    for(const r of records) html += `<option value="${r.id}">${r.title}</option>`;
+    $select.html(html);
+  });
+}
+function loadDepartmentOptions($select, selectedId) {
+  axios.get('/api/departments').then(res => {
+    let html = '<option value="">请选择</option>';
+    for(const d of res.data) {
+      html += `<option value="${d.id}">${d.name}</option>`;
+    }
+    $select.html(html);
+    if(selectedId) $select.val(selectedId);
+  });
+}
+function loadEmployeeOptionsByDept($select, deptId, selectedId) {
+  if(!deptId) { $select.html('<option value="">请先选择部门</option>'); return; }
+  axios.get('/api/employees', {params:{department_id: deptId}}).then(res => {
+    let html = '<option value="">请选择</option>';
+    for(const emp of res.data) {
+      html += `<option value="${emp.id}">${emp.name} (${emp.employee_number})</option>`;
+    }
+    $select.html(html);
+    if(selectedId) $select.val(selectedId);
+  });
+}
+$('#newRecord').off('click').on('click', function(){
+  const $modal = $('#newRecordModal');
+  $modal.find('.modal-title').text('新建工作记录');
+  var formEl = $modal.find('#newRecordForm')[0];
+  if (formEl && typeof formEl.reset === 'function') formEl.reset();
+  $modal.find('[name=id]').val('');
+  loadRequirementOptions($modal.find('[name=requirement_id]'));
+  loadDictToSelect('work_type_dict', $modal.find('[name=work_type_id]'));
+  loadDictToSelect('affected_type_dict', $modal.find('[name=affected_id]'));
+  loadDictToSelect('source_type_dict', $modal.find('[name=source_type_id]'));
+  loadDictToSelect('work_record_status_dict', $modal.find('[name=work_record_status_id]'));
+  loadDepartmentOptions($modal.find('[name=department_id]'), 0);
+  $modal.find('[name=employee_id]').html('<option value="">请先选择部门</option>');
+  // 监听部门下拉change事件
+  $modal.find('[name=department_id]').off('change').on('change', function() {
+    const deptId = $(this).val();
+    loadEmployeeOptionsByDept($modal.find('[name=employee_id]'), deptId, null);
+  });
+  uploadFiles = [];
+  renderUploadFileList();
+  $modal.find('#uploadFileList').empty();
+  $modal.modal('show');
+});
+// 文件上传队列（仅新建用）
+var uploadFiles = [];
+$('#newRecordModal').off('change', '#newRecordFileInput').on('change', '#newRecordFileInput', function(){
+  if($('#newRecordModal .modal-title').text().indexOf('新建')!==-1){
+    for(let f of this.files) uploadFiles.push(f);
+    renderUploadFileList();
+  }
+  this.value = '';
+});
+function renderUploadFileList() {
+  const $list = $('#uploadFileList');
+  $list.empty();
+  uploadFiles.forEach((f,i)=>{
+    $list.append(`<span class="badge bg-secondary me-2 mb-1">${f.name} <span class="file-del-x" style="cursor:pointer;" data-idx="${i}">×</span></span>`);
+  });
+}
+$('#uploadFileList').off('click', '.file-del-x').on('click', '.file-del-x', function(){
+  if($('#newRecordModal .modal-title').text().indexOf('新建')!==-1){
+    const idx = $(this).data('idx');
+    uploadFiles.splice(idx,1);
+    renderUploadFileList();
+  }
+});
+// 新增/修改保存时区分接口
+$('#submitNewRecord').off('click').on('click', function(){
+  const $form = $('#newRecordForm')[0];
+  if(!$form.checkValidity()){ $form.reportValidity(); return; }
+  const formData = new FormData($form);
+  for(let f of uploadFiles) formData.append('files', f);
+  // 新增：如果 id 为空，删除 id 字段，避免传递空 id 给后端
+  if (!formData.get('id')) formData.delete('id');
+  const isEdit = formData.get('id');
+  const url = isEdit ? '/api/update_work_record' : '/api/get_work_records';
+  axios.post(url, formData)
+    .then(()=>{
+      showSwalToast('success', isEdit ? '修改成功' : '新建成功', 1500);
+      $('#newRecordModal').modal('hide');
+      loadWorkRecords();
+      uploadFiles = [];
+    })
+    .catch(err=>{
+      showSwalToast('error', err?.response?.data?.error||(isEdit?'修改失败':'新建失败'), 2000);
+    });
+});
+$(function(){
+  loadStatusOptions();
+  loadAffectedOptions();
+  loadSourceTypeOptions();
+  loadRequirementFilterOptions();
+  loadWorkTypeOptions();
+  loadWorkRecords();
+  window.initTab_work = function(){
+    loadStatusOptions();
+    loadWorkRecords();
+  };
+  $('.btn-group [data-scope]').click(function(){
+    $('.btn-group [data-scope]').removeClass('active');
+    $(this).addClass('active');
+    workScope = $(this).data('scope');
+    workPage = 1;
+    loadWorkRecords();
+  });
+  $('#pageSize').change(function(){
+    workPageSize = parseInt($(this).val());
+    workPage = 1;
+    loadWorkRecords();
+  });
+  // 状态过滤
+  $('#statusFilter').change(function(){
+    workStatus = $(this).val();
+    workPage = 1;
+    loadWorkRecords();
+  });
+  $('#affectedFilter').change(function(){
+    workAffected = $(this).val();
+    workPage = 1;
+    loadWorkRecords();
+  });
+  $('#sourceTypeFilter').change(function(){
+    workSourceType = $(this).val();
+    workPage = 1;
+    loadWorkRecords();
+  });
+  $('#requirementFilter').change(function(){
+    workRequirement = $(this).val();
+    workPage = 1;
+    loadWorkRecords();
+  });
+  $('#workTypeFilter').change(function(){
+    workType = $(this).val();
+    workPage = 1;
+    loadWorkRecords();
+  });
+});
+// 保证 tab 切换时自动刷新
+if (window.initTab_work) window.initTab_work();
+// 全局消息提示（左下角）
+function showToast(msg, type = 'info', ms = 2500) {
+  let toast = $('#globalToast');
+  if (!toast.length) {
+    toast = $(`
+      <div id="globalToast" style="position:fixed;left:32px;bottom:32px;z-index:9999;min-width:260px;max-width:420px;pointer-events:none;">
+        <div class="toast-outer" style="display:none;">
+          <div class="alert alert-`+type+` shadow-lg mb-0 py-3 px-4 d-flex align-items-center border-0" style="font-size:1.15em;border-radius:1.2em;background:rgba(30,32,48,0.92);color:#fff;box-shadow:0 8px 32px 0 rgba(0,0,0,0.18);backdrop-filter:blur(6px);">
+            <span class="me-2 toast-icon" style="font-size:1.4em;"></span><span class="toast-msg"></span>
+          </div>
+        </div>
+      </div>`).appendTo('body');
+  }
+  let outer = toast.find('.toast-outer');
+  let alert = outer.find('.alert');
+  let icon = outer.find('.toast-icon');
+  let msgBox = outer.find('.toast-msg');
+  alert.removeClass('alert-info alert-success alert-danger alert-warning')
+    .addClass('alert-'+type);
+  // 图标
+  let icons = {
+    info: 'ℹ️', success: '✅', danger: '❌', warning: '⚠️'
+  };
+  icon.html(icons[type]||'ℹ️');
+  msgBox.text(msg);
+  outer.stop(true,true).fadeIn(200);
+  setTimeout(()=>outer.fadeOut(400), ms);
+}
+// 在所有 axios 错误和业务失败处调用 showToast
+axios.interceptors.response.use(r=>r, err=>{
+  let msg = err?.response?.data?.error || err?.message || '请求失败';
+  showToast(msg, 'danger');
+  return Promise.reject(err);
+});
+</script>
+<style>
+/* 表格整体字体、按钮、badge 缩小 */
+#workTableWrap table th, #workTableWrap table td {
+  font-size: 13px;
+  padding: 6px 8px;
+}
+#workTableWrap .badge-status, #workTableWrap .badge {
+  font-size: 12px;
+  padding: 3px 8px;
+}
+#workTableWrap .btn {
+  font-size: 12px;
+  padding: 2px 6px;
+}
+/* 删除按钮 hover 显示 */
+.table-hover tbody tr .btn-del {
+  opacity: 0;
+  transition: opacity 0.2s;
+  float: right;
+  margin-left: 8px;
+}
+.table-hover tbody tr:hover .btn-del {
+  opacity: 1;
+}
+.table-hover tbody tr td:last-child {
+  text-align: left;
+  white-space: nowrap;
+}
+.status-cell { position: relative; min-width: 110px; }
+.status-cell .badge-status {
+  display: inline-block;
+  min-width: 70px;
+  font-size: 1em;
+  padding: 0.45em 1.1em 0.45em 0.9em;
+  border-radius: 1.2em;
+  box-shadow: 0 2px 8px 0 rgba(0,0,0,0.07);
+  cursor: pointer;
+  transition: box-shadow 0.18s, background 0.18s;
+}
+.status-cell .badge-status:hover {
+  box-shadow: 0 4px 16px 0 rgba(0,0,0,0.13);
+  filter: brightness(1.08);
+}
+.status-cell .status-select {
+  display: none;
+  position: absolute;
+  left: 0; top: 0; min-width: 100%;
+  z-index: 10;
+  font-size: 1em;
+  padding: 0.2em 0.8em;
+  border-radius: 1.2em;
+  background: #fff;
+  box-shadow: 0 4px 16px 0 rgba(0,0,0,0.13);
+  border: 1.5px solid #e0e0e0;
+}
+.status-cell .status-select:focus {
+  outline: 2px solid #007bff;
+}
+.status-cell.active .badge-status {
+  display: none;
+}
+.status-cell.active .status-select {
+  display: block;
+}
+/* 删除按钮样式始终显示，不再只在 hover 时显示 */
+.table-hover tbody tr .btn-del {
+  opacity: 1;
+  float: none;
+  margin-left: 8px;
+  transition: none;
+}
+.swal-sm-popup {
+  max-width: 320px !important;
+  padding: 1.2em 1.2em 0.8em 1.2em !important;
+}
+.swal-sm-title {
+  font-size: 1.08em !important;
+}
+.swal-sm-text {
+  font-size: 0.98em !important;
+}
+.swal-sm-button {
+  font-size: 0.98em !important;
+  padding: 0.3em 1.2em !important;
+}
+.swal-toast-sm {
+  max-width: 320px !important;
+  padding: 0.7em 1.2em 0.7em 1.2em !important;
+  border-radius: 1.2em !important;
+}
+.swal-toast-title-sm {
+  font-size: 1.08em !important;
+}
+.file-link-wrap:hover .file-del-x { opacity: 1 !important; }
+</style>

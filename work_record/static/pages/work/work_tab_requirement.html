@@ -1,0 +1,332 @@
+<link rel="stylesheet" href="../../dist/font/bootstrap-icons.css">
+<div class="d-flex justify-content-between mb-2">
+  <div class="d-flex gap-2 align-items-center">
+  <button class="btn btn-primary" id="newProgress" title="新建"><i class="bi bi-file-earmark-plus"></i></button>
+    <label class="form-label mb-0 ms-3">来源</label>
+    <select id="sourceTypeFilter" class="form-select form-select-sm" style="width:120px"></select>
+    <label class="form-label mb-0 ms-2">影响</label>
+    <select id="affectedFilter" class="form-select form-select-sm" style="width:120px"></select>
+  </div>
+</div>
+<div id="requirementTableWrap"></div>
+<div class="d-flex justify-content-end align-items-center mt-3 gap-3">
+  <nav id="requirementPagination" class="mb-0"></nav>
+  <div class="d-flex align-items-center gap-2">
+    <label class="form-label mb-0">每页</label>
+    <select id="requirementPageSize" class="form-select form-select-sm" style="width:80px">
+      <option value="10">10</option>
+      <option value="20" selected>20</option>
+      <option value="50">50</option>
+    </select>
+    <span class="text-muted small">条</span>
+  </div>
+</div>
+<script src="../../dist/js/sweetalert2.all.min.js"></script>
+<style>
+.badge-status-strong {
+  min-width: 70px;
+  font-weight: bold;
+  border-radius: 0.7em;
+  border: 1.5px solid #e0e0e0;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.07);
+  font-size: 1em;
+  letter-spacing: 1px;
+  padding: 0.4em 1.1em;
+  display: inline-block;
+}
+/* 表格整体字体、按钮、badge 缩小 */
+#requirementTableWrap table th, #requirementTableWrap table td {
+  font-size: 13px;
+  padding: 6px 8px;
+}
+#requirementTableWrap .badge {
+  font-size: 12px;
+  padding: 3px 8px;
+}
+#requirementTableWrap .btn {
+  font-size: 12px;
+  padding: 2px 6px;
+}
+/* 删除按钮始终显示，无需hover控制 */
+.btn-del .bi-trash { opacity: 1 !important; }
+</style>
+<script>
+var requirementPage = 1, requirementPageSize = 20;
+var requirementSourceType = '', requirementAffected = '';
+
+function getFontColor(bg) {
+  if(!bg) return '#222';
+  if(/^#/.test(bg)) {
+    let c = bg.replace('#','');
+    if(c.length===3) c = c[0]+c[0]+c[1]+c[1]+c[2]+c[2];
+    let rgb = parseInt(c,16);
+    let r = (rgb>>16)&0xff, g = (rgb>>8)&0xff, b = rgb&0xff;
+    let l = 0.299*r+0.587*g+0.114*b;
+    return l>180 ? '#222' : '#fff';
+  }
+  return '#222';
+}
+function renderRequirements() {
+  axios.get('/api/requirement_records', {
+    params: {
+      page: requirementPage,
+      page_size: requirementPageSize,
+      source_type_id: requirementSourceType,
+      affected_id: requirementAffected
+    }
+  }).then(res => {
+    const { records, total, page, page_size } = res.data;
+    let html = `<table class="table table-hover align-middle"><thead><tr>
+      <th style="width: 200px">需求名称</th><th style="width: 100px">提出人</th><th style="width: 80px">状态</th><th style="width: 100px">更新时间</th><th style="width: 80px">来源</th><th style="width: 80px">影响</th><th style="width: 120px">操作</th></tr></thead><tbody>`;
+    if (!records || records.length === 0) {
+      html += '<tr><td colspan="7" class="text-center text-muted">暂无数据</td></tr>';
+    } else {
+      for (let i=0; i<records.length; i++) {
+        const item = records[i];
+        html += `<tr>
+          <td style="max-width: 200px; word-wrap: break-word; white-space: normal;">${item.title || ''}</td>
+          <td style="max-width: 100px; word-wrap: break-word; white-space: normal;">${item.employee_name || ''}</td>
+        <td><span class="badge ${item.requirement_status_class||''}">${item.requirement_status_name||''}</span></td>
+        <td>${(item.update_time || '').slice(0, 10)}</td>
+          <td style="max-width: 80px; word-wrap: break-word; white-space: normal;">${item.source_type_name || ''}</td>
+          <td style="max-width: 80px; word-wrap: break-word; white-space: normal;">${item.affected_name || ''}</td>
+          <td style="vertical-align:middle;">
+            <button class="btn btn-sm btn-outline-primary btn-action btn-edit ms-1" data-id="${item.id}" title="修改"><i class="bi bi-pencil"></i></button>
+            <button class="btn btn-sm btn-outline-danger btn-action btn-del ms-1" data-id="${item.id}" title="删除"><i class="bi bi-trash"></i></button>
+        </td>
+        </tr>`;
+      }
+    }
+    html += '</tbody></table>';
+    $('#requirementTableWrap').html(html);
+    
+    // 分页
+    let pageCount = Math.ceil(total/page_size);
+    let pagHtml = `<ul class="pagination pagination-sm mb-0">`;
+    for(let i=1;i<=pageCount;i++) {
+      pagHtml += `<li class="page-item${i===page?' active':''}"><a class="page-link" href="#">${i}</a></li>`;
+    }
+    pagHtml += '</ul>';
+    $('#requirementPagination').html(pagHtml);
+    $('#requirementPagination .page-link').off('click').on('click',function(e){
+      e.preventDefault();
+      requirementPage = parseInt($(this).text());
+      renderRequirements();
+    });
+  }).catch(handleApiError);
+}
+function initTab_progress() {
+  renderRequirements();
+}
+// 模态框结构（插入到body）
+if (!document.getElementById('requirementModal')) {
+  $(document.body).append(`
+    <div class="modal fade" id="requirementModal" tabindex="-1">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">需求</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+            <form id="requirementForm">
+              <input type="hidden" name="id">
+              <div class="mb-2"><label class="form-label">需求名称</label><input name="title" class="form-control" required></div>
+              <div class="mb-2"><label class="form-label">部门</label><select name="department_id" class="form-select" required></select></div>
+              <div class="mb-2"><label class="form-label">提出人</label><select name="employee_id" class="form-select" required></select></div>
+              <div class="mb-2"><label class="form-label">状态</label><select name="requirement_status_id" class="form-select" required></select></div>
+              <div class="mb-2"><label class="form-label">来源</label><select name="source_type_id" class="form-select" required></select></div>
+              <div class="mb-2"><label class="form-label">影响</label><select name="affected_id" class="form-select" required></select></div>
+            </form>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+            <button type="button" class="btn btn-primary" id="btnSaveRequirement">保存</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  `);
+}
+// 事件绑定与表单联动
+$(document).on('click', '.btn-edit', function() {
+  const id = $(this).data('id');
+  axios.get('/api/requirement_records').then(res => {
+    const records = res.data.records || res.data;
+    const item = records.find(x => x.id == id);
+    if (!item) return;
+    const $form = $('#requirementForm');
+    $form[0].reset();
+    Promise.all([
+      loadDepartmentOptions($form.find('[name=department_id]'), item.department_id),
+      loadDictToSelect('requirement_status_dict', $form.find('[name=requirement_status_id]')),
+      loadDictToSelect('source_type_dict', $form.find('[name=source_type_id]')),
+      loadDictToSelect('affected_type_dict', $form.find('[name=affected_id]'))
+    ]).then(() => {
+      setTimeout(() => {
+        $form.find('[name=department_id]').val(item.department_id).trigger('change');
+        $form.find('[name=requirement_status_id]').val(item.requirement_status_id).trigger('change');
+        $form.find('[name=source_type_id]').val(item.source_type_id).trigger('change');
+        $form.find('[name=affected_id]').val(item.affected_id).trigger('change');
+        loadEmployeeOptionsByDept($form.find('[name=employee_id]'), item.department_id, item.employee_id);
+        // 绑定部门下拉change事件，切换时刷新提出人下拉
+        $form.find('[name=department_id]').off('change').on('change', function() {
+          const deptId = $(this).val();
+          loadEmployeeOptionsByDept($form.find('[name=employee_id]'), deptId, null);
+        });
+      }, 100);
+    });
+    $form.find('[name=title]').val(item.title || '');
+    $form.find('[name=id]').val(item.id);
+    
+    $('#requirementForm input, #requirementForm select').prop('disabled', false);
+    $('#btnSaveRequirement').show();
+    $('#requirementModal .modal-title').text('修改需求');
+    $('#requirementModal').modal('show');
+  }).catch(handleApiError);
+});
+$(document).off('click', '.btn-del').on('click', '.btn-del', function() {
+  const id = $(this).data('id');
+  Swal.fire({
+    title: "确定删除？",
+    text: "删除后无法恢复！",
+    icon: "warning",
+    showCancelButton: true,
+    confirmButtonColor: "#3085d6",
+    cancelButtonColor: "#d33",
+    confirmButtonText: "确认删除",
+    cancelButtonText: "取消",
+    customClass: {
+      popup: 'swal-sm-popup',
+      title: 'swal-sm-title',
+      htmlContainer: 'swal-sm-text',
+      confirmButton: 'swal-sm-button',
+      cancelButton: 'swal-sm-button'
+    }
+  }).then((result) => {
+    if (result.isConfirmed) {
+      // 使用fetch替代axios，避免触发全局拦截器
+      fetch('/api/delete_requirement_record?id=' + id, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      }).then(response => {
+        if (response.ok) {
+          showSwalToast('success', '删除成功', 1500);
+          renderRequirements();
+        } else {
+          return response.json().then(data => {
+            throw new Error(data.error || '删除失败');
+          });
+        }
+      }).catch(err => {
+        showSwalToast('error', err.message || '删除失败', 2000);
+      });
+    }
+  });
+});
+// 新建/编辑弹窗弹出时，加载部门和员工下拉，绑定部门change事件
+$(document).off('click', '#newProgress').on('click', '#newProgress', function() {
+  const $modal = $('#requirementModal');
+  const $form = $('#requirementForm');
+  $form[0].reset();
+  loadDepartmentOptions($form.find('[name=department_id]'), null);
+  $form.find('[name=employee_id]').html('<option value="">请先选择部门</option>');
+  // 先解绑再绑定，确保事件生效
+  $form.find('[name=department_id]').off('change').on('change', function() {
+    const deptId = $(this).val();
+    loadEmployeeOptionsByDept($form.find('[name=employee_id]'), deptId, null);
+  });
+  $('#requirementForm input, #requirementForm select').prop('disabled', false);
+  $('#btnSaveRequirement').show();
+  $('#requirementModal .modal-title').text('新建需求');
+  $modal.modal('show');
+});
+$('#btnSaveRequirement').on('click', function() {
+  const form = $('#requirementForm')[0];
+  const data = Object.fromEntries(new FormData(form).entries());
+  // 始终用POST，后端通过id区分新增/修改
+  const isEdit = data.id && data.id.trim() !== '';
+  // 使用fetch替代axios，避免触发全局拦截器
+  fetch('/api/requirement_record', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(data)
+  }).then(response => {
+    if (response.ok) {
+      $('#requirementModal').modal('hide');
+      showSwalToast('success', isEdit ? '修改成功' : '新建成功', 1500);
+      renderRequirements();
+    } else {
+      return response.json().then(data => {
+        // 直接显示后端返回的 error 字段内容
+        throw new Error(data.error || (isEdit ? '修改失败' : '新建失败'));
+      });
+    }
+  }).catch(err => {
+    // 这里直接显示后端返回的具体错误信息
+    showSwalToast('error', err.message, 2000);
+  });
+});
+// 下拉框加载
+function loadRequirementDicts() {
+  axios.get('/api/dict?table=requirement_status_dict').then(res => {
+    const sel = $('[name=requirement_status_id]');
+    sel.html(res.data.map(x => `<option value="${x.id}">${x.status}</option>`).join(''));
+  });
+  axios.get('/api/dict?table=source_type_dict').then(res => {
+    const sel = $('[name=source_type_id]');
+    sel.html(res.data.map(x => `<option value="${x.id}">${x.type}</option>`).join(''));
+    // 页面筛选下拉
+    let html = '<option value="">全部</option>';
+    for(const s of res.data) html += `<option value="${s.id}">${s.type}</option>`;
+    $('#sourceTypeFilter').html(html);
+  });
+  axios.get('/api/dict?table=affected_type_dict').then(res => {
+    const sel = $('[name=affected_id]');
+    sel.html(res.data.map(x => `<option value="${x.id}">${x.affected}</option>`).join(''));
+    // 页面筛选下拉
+    let html = '<option value="">全部</option>';
+    for(const s of res.data) html += `<option value="${s.id}">${s.affected}</option>`;
+    $('#affectedFilter').html(html);
+  });
+}
+// 分页大小变化事件
+$('#requirementPageSize').on('change', function() {
+  requirementPageSize = parseInt($(this).val());
+  requirementPage = 1;
+  renderRequirements();
+});
+$('#sourceTypeFilter').on('change', function() {
+  requirementSourceType = $(this).val();
+  requirementPage = 1;
+  renderRequirements();
+});
+$('#affectedFilter').on('change', function() {
+  requirementAffected = $(this).val();
+  requirementPage = 1;
+  renderRequirements();
+});
+// 1. 弹窗弹出时加载部门和员工下拉，部门变动时联动员工下拉
+function loadDepartmentOptions($select, selectedId, cb) {
+  axios.get('/api/departments').then(res => {
+    let html = '<option value="">请选择</option>';
+    for(const d of res.data) {
+      html += `<option value="${d.id}">${d.name}</option>`;
+    }
+    $select.html(html);
+    if(selectedId) $select.val(selectedId);
+    if(cb) cb();
+  }).catch(handleApiError);
+}
+// 2. 弹窗弹出时加载部门和员工下拉，部门变动时联动员工下拉
+// 在新建/编辑弹窗弹出时，调用 loadDepartmentOptions($modal.find('[name=department_id]'), 回显部门id)，再调用 loadEmployeeOptionsByDept($modal.find('[name=employee_id]'), 部门id, 回显员工id)
+// 并监听部门下拉change事件，切换时重新加载员工下拉
+$(function(){
+  loadRequirementDicts();
+  initTab_progress && initTab_progress();
+});
+</script>

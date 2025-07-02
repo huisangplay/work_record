@@ -1,0 +1,831 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <title>字典维护 - 工作记录系统</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link href="../../dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="../../dist/font/bootstrap-icons.css" rel="stylesheet">
+  <!-- 备用图标库 -->
+  <link href="../../dist/css/all.min.css" rel="stylesheet">
+  <style>
+    body {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+    }
+    .main-container {
+      background: white;
+      border-radius: 20px;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+      margin: 20px auto;
+      max-width: 1200px;
+    }
+    .header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 30px;
+      border-radius: 20px 20px 0 0;
+      text-align: center;
+    }
+    .content {
+      padding: 30px;
+    }
+    .dict-card {
+      background: #f8f9fa;
+      border-radius: 15px;
+      padding: 20px;
+      margin-bottom: 20px;
+      border: 2px solid transparent;
+      transition: all 0.3s ease;
+    }
+    .dict-card:hover {
+      border-color: #667eea;
+      transform: translateY(-2px);
+      box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+    }
+    .dict-card.active {
+      border-color: #667eea;
+      background: #e3f2fd;
+    }
+    .dict-icon {
+      font-size: 2rem;
+      margin-bottom: 10px;
+      color: #667eea;
+    }
+    .dict-title {
+      font-size: 1.2rem;
+      font-weight: 600;
+      margin-bottom: 5px;
+    }
+    .dict-count {
+      color: #6c757d;
+      font-size: 0.9rem;
+    }
+    .table-container {
+      background: white;
+      border-radius: 15px;
+      padding: 20px;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+    }
+    .btn-custom {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      border: none;
+      border-radius: 25px;
+      padding: 10px 25px;
+      color: white;
+      font-weight: 500;
+      transition: all 0.3s ease;
+    }
+    .btn-custom:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+      color: white;
+    }
+    .btn-back {
+      background: #6c757d;
+      border: none;
+      border-radius: 25px;
+      padding: 10px 25px;
+      color: white;
+      font-weight: 500;
+      transition: all 0.3s ease;
+    }
+    .btn-back:hover {
+      background: #5a6268;
+      color: white;
+    }
+    .table th {
+      background: #f8f9fa;
+      border: none;
+      font-weight: 600;
+      color: #495057;
+    }
+    .table td {
+      vertical-align: middle;
+      border: none;
+      border-bottom: 1px solid #dee2e6;
+    }
+    .badge-custom {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border-radius: 15px;
+      padding: 5px 12px;
+      font-size: 0.8rem;
+    }
+    .modal-content {
+      border-radius: 15px;
+      border: none;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+    }
+    .modal-header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border-radius: 15px 15px 0 0;
+      border: none;
+    }
+    .form-control, .form-select {
+      border-radius: 10px;
+      border: 2px solid #e9ecef;
+      transition: all 0.3s ease;
+    }
+    .form-control:focus, .form-select:focus {
+      border-color: #667eea;
+      box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+    }
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: #6c757d;
+    }
+    .empty-state i {
+      font-size: 4rem;
+      margin-bottom: 20px;
+      color: #dee2e6;
+    }
+    /* 操作按钮样式 */
+    .btn-action {
+      width: 32px;
+      height: 32px;
+      padding: 0;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 6px;
+      margin-right: 5px;
+    }
+    .btn-action i {
+      font-size: 14px;
+    }
+    /* 备用图标样式 */
+    .icon-edit::before {
+      content: "✏️";
+    }
+    .icon-delete::before {
+      content: "🗑️";
+    }
+    .icon-edit-fallback::before {
+      content: "编辑";
+      font-size: 12px;
+    }
+    .icon-delete-fallback::before {
+      content: "删除";
+      font-size: 12px;
+    }
+  </style>
+</head>
+<body>
+  <div class="main-container">
+    <div class="header">
+      <h1><i class="bi bi-gear-fill me-3"></i>字典维护</h1>
+      <p class="mb-0">管理系统中的各种字典数据</p>
+    </div>
+    
+    <div class="content">
+      <!-- 返回按钮 -->
+      <div class="mb-4">
+        <a href="work_record.html" class="btn btn-back">
+          <i class="bi bi-arrow-left me-2"></i>返回主页
+        </a>
+      </div>
+
+      <!-- 字典选择区域 -->
+      <div id="dictSelection" class="row">
+        <div class="col-md-3 mb-3">
+          <div class="dict-card" data-table="work_type_dict">
+            <div class="text-center">
+              <i class="bi bi-tags dict-icon"></i>
+              <i class="fas fa-tags dict-icon" style="display: none;"></i>
+              <div class="dict-title">工作类型</div>
+              <div class="dict-count">管理不同类型的工作</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3 mb-3">
+          <div class="dict-card" data-table="affected_type_dict">
+            <div class="text-center">
+              <i class="bi bi-exclamation-triangle dict-icon"></i>
+              <i class="fas fa-exclamation-triangle dict-icon" style="display: none;"></i>
+              <div class="dict-title">影响类型</div>
+              <div class="dict-count">管理工作影响范围</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3 mb-3">
+          <div class="dict-card" data-table="source_type_dict">
+            <div class="text-center">
+              <i class="bi bi-funnel dict-icon"></i>
+              <i class="fas fa-filter dict-icon" style="display: none;"></i>
+              <div class="dict-title">来源类型</div>
+              <div class="dict-count">管理工作来源</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3 mb-3">
+          <div class="dict-card" data-table="work_record_status_dict">
+            <div class="text-center">
+              <i class="bi bi-list-check dict-icon"></i>
+              <i class="fas fa-list-check dict-icon" style="display: none;"></i>
+              <div class="dict-title">工作状态</div>
+              <div class="dict-count">管理工作记录状态</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3 mb-3">
+          <div class="dict-card" data-table="requirement_status_dict">
+            <div class="text-center">
+              <i class="bi bi-clipboard-check dict-icon"></i>
+              <i class="fas fa-clipboard-check dict-icon" style="display: none;"></i>
+              <div class="dict-title">需求状态</div>
+              <div class="dict-count">管理需求进展状态</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3 mb-3">
+          <div class="dict-card" data-table="issue_progress_dict">
+            <div class="text-center">
+              <i class="bi bi-flag dict-icon"></i>
+              <i class="fas fa-flag dict-icon" style="display: none;"></i>
+              <div class="dict-title">问题进度</div>
+              <div class="dict-count">管理问题处理进度</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3 mb-3">
+          <div class="dict-card" data-table="department_dict">
+            <div class="text-center">
+              <i class="bi bi-building dict-icon"></i>
+              <i class="fas fa-building dict-icon" style="display: none;"></i>
+              <div class="dict-title">部门管理</div>
+              <div class="dict-count">管理系统部门</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3 mb-3">
+          <div class="dict-card" data-table="employee_dict">
+            <div class="text-center">
+              <i class="bi bi-people dict-icon"></i>
+              <i class="fas fa-users dict-icon" style="display: none;"></i>
+              <div class="dict-title">员工管理</div>
+              <div class="dict-count">管理系统员工</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 数据表格区域 -->
+      <div id="dictTable" class="table-container" style="display: none;">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+          <h4 id="currentDictTitle">字典数据</h4>
+          <button class="btn btn-custom" id="btnAddDict">
+            <i class="bi bi-plus-circle me-2"></i>新增
+          </button>
+        </div>
+        
+        <div id="tableContent">
+          <!-- 表格内容将在这里动态加载 -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 新增/编辑模态框 -->
+  <div class="modal fade" id="dictModal" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="modalTitle">新增字典项</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <form id="dictForm">
+            <input type="hidden" id="dictId" name="id">
+            
+            <div class="mb-3">
+              <label class="form-label">名称</label>
+              <input type="text" class="form-control" id="dictName" name="name" required>
+            </div>
+            
+            <!-- 员工特殊字段 -->
+            <div class="mb-3" id="employeeNameField" style="display: none;">
+              <label class="form-label">员工姓名</label>
+              <input type="text" class="form-control" id="dictEmployeeName" name="employee_name">
+            </div>
+            <div class="mb-3" id="employeeNumberField" style="display: none;">
+              <label class="form-label">员工编号</label>
+              <input type="text" class="form-control" id="dictEmployeeNumber" name="employee_number">
+            </div>
+            <div class="mb-3" id="departmentNameField" style="display: none;">
+              <label class="form-label">所属部门</label>
+              <select class="form-select" id="dictDepartmentName" name="department_name"></select>
+            </div>
+            
+            <div class="mb-3">
+              <label class="form-label">描述</label>
+              <textarea class="form-control" id="dictComment" name="comment" rows="3"></textarea>
+            </div>
+            
+            <!-- 特殊字段 -->
+            <div class="mb-3" id="statusClassField" style="display: none;">
+              <label class="form-label">状态样式</label>
+              <select class="form-select" id="dictStatusClass" name="status_class">
+                <option value="bg-primary">蓝色 (bg-primary)</option>
+                <option value="bg-success">绿色 (bg-success)</option>
+                <option value="bg-warning">黄色 (bg-warning)</option>
+                <option value="bg-danger">红色 (bg-danger)</option>
+                <option value="bg-secondary">灰色 (bg-secondary)</option>
+                <option value="bg-info">浅蓝 (bg-info)</option>
+                <option value="bg-dark">深灰 (bg-dark)</option>
+                <option value="bg-light">浅灰 (bg-light)</option>
+              </select>
+            </div>
+            
+            <div class="mb-3" id="progressClassField" style="display: none;">
+              <label class="form-label">进度样式</label>
+              <select class="form-select" id="dictProgressClass" name="progress_class">
+                <option value="bg-primary">蓝色 (bg-primary)</option>
+                <option value="bg-success">绿色 (bg-success)</option>
+                <option value="bg-warning">黄色 (bg-warning)</option>
+                <option value="bg-danger">红色 (bg-danger)</option>
+                <option value="bg-secondary">灰色 (bg-secondary)</option>
+                <option value="bg-info">浅蓝 (bg-info)</option>
+                <option value="bg-dark">深灰 (bg-dark)</option>
+                <option value="bg-light">浅灰 (bg-light)</option>
+              </select>
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+          <button type="button" class="btn btn-custom" id="btnSaveDict">保存</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="../../dist/js/jquery-3.7.1.min.js"></script>
+  <script src="../../dist/js/bootstrap.bundle.min.js"></script>
+  <script src="../../dist/js/axios.min.js"></script>
+  <script src="../../dist/js/sweetalert2.all.min.js"></script>
+  <script src="common/util.js"></script>
+  <script src="common/api.js"></script>
+  <script>
+    let currentTable = '';
+    let currentData = [];
+
+    // 检测图标库是否可用
+    function checkIconSupport() {
+      // 检测 Bootstrap Icons
+      const testElement = document.createElement('i');
+      testElement.className = 'bi bi-pencil';
+      document.body.appendChild(testElement);
+      const biSupported = getComputedStyle(testElement, '::before').content !== 'none';
+      document.body.removeChild(testElement);
+      
+      // 检测 Font Awesome
+      const testFAElement = document.createElement('i');
+      testFAElement.className = 'fas fa-edit';
+      document.body.appendChild(testFAElement);
+      const faSupported = getComputedStyle(testFAElement, '::before').content !== 'none';
+      document.body.removeChild(testFAElement);
+      
+      if (!biSupported) {
+        // 如果 Bootstrap Icons 不可用，切换到 Font Awesome
+        // 处理操作按钮图标
+        const editButtons = document.querySelectorAll('.btn-action');
+        editButtons.forEach(btn => {
+          const biIcon = btn.querySelector('.bi');
+          const faIcon = btn.querySelector('.fas');
+          const emojiIcon = btn.querySelector('.icon-edit, .icon-delete');
+          const textFallback = btn.querySelector('.icon-edit-fallback, .icon-delete-fallback');
+          
+          if (biIcon) biIcon.style.display = 'none';
+          
+          if (faSupported && faIcon) {
+            faIcon.style.display = 'inline';
+          } else if (emojiIcon) {
+            emojiIcon.style.display = 'inline';
+          } else if (textFallback) {
+            textFallback.style.display = 'inline';
+            btn.style.width = 'auto';
+            btn.style.padding = '4px 8px';
+          }
+        });
+        
+        // 处理字典卡片图标
+        const dictCards = document.querySelectorAll('.dict-card');
+        dictCards.forEach(card => {
+          const biIcon = card.querySelector('.bi');
+          const faIcon = card.querySelector('.fas');
+          
+          if (biIcon) biIcon.style.display = 'none';
+          if (faSupported && faIcon) faIcon.style.display = 'inline';
+        });
+      }
+    }
+
+    // 显示提示消息
+    function showToast(type, message) {
+      Swal.fire({
+        position: 'top-end',
+        icon: type,
+        title: message,
+        showConfirmButton: false,
+        timer: 1500,
+        toast: true
+      });
+    }
+
+    // 获取字典数据
+    function loadDictData(table) {
+      currentTable = table;
+      const tableNames = {
+        'work_type_dict': '工作类型',
+        'affected_type_dict': '影响类型', 
+        'source_type_dict': '来源类型',
+        'work_record_status_dict': '工作状态',
+        'requirement_status_dict': '需求状态',
+        'issue_progress_dict': '问题进度',
+        'department_dict': '部门管理',
+        'employee_dict': '员工管理'
+      };
+
+      $('#currentDictTitle').text(tableNames[table] + '管理');
+      $('#dictTable').show();
+
+      axios.get('/api/dict', { params: { table: table } })
+        .then(res => {
+          currentData = res.data;
+          renderTable(res.data, table);
+        })
+        .catch(err => {
+          showToast('error', '加载数据失败');
+          console.error(err);
+        });
+    }
+
+    // 渲染表格
+    function renderTable(data, table) {
+      if (!data || data.length === 0) {
+        $('#tableContent').html(`
+          <div class="empty-state">
+            <i class="bi bi-inbox"></i>
+            <h5>暂无数据</h5>
+            <p>点击"新增"按钮添加第一条记录</p>
+          </div>
+        `);
+        return;
+      }
+
+      let columns = [];
+      let headers = [];
+
+      // 根据表类型确定列结构
+      switch(table) {
+        case 'work_type_dict':
+          columns = ['id', 'type', 'comment'];
+          headers = ['ID', '名称', '描述'];
+          break;
+        case 'affected_type_dict':
+          columns = ['id', 'affected', 'comment'];
+          headers = ['ID', '名称', '描述'];
+          break;
+        case 'source_type_dict':
+          columns = ['id', 'type', 'comment'];
+          headers = ['ID', '名称', '描述'];
+          break;
+        case 'work_record_status_dict':
+          columns = ['id', 'status_name', 'status_class'];
+          headers = ['ID', '状态名称', '状态样式'];
+          break;
+        case 'requirement_status_dict':
+          columns = ['id', 'status', 'requirement_status_class', 'comment'];
+          headers = ['ID', '状态名称', '状态样式', '描述'];
+          break;
+        case 'issue_progress_dict':
+          columns = ['id', 'progress', 'progress_class', 'comment'];
+          headers = ['ID', '进度名称', '进度样式', '描述'];
+          break;
+        case 'department_dict':
+          columns = ['id', 'name', 'description'];
+          headers = ['ID', '部门名称', '描述'];
+          break;
+        case 'employee_dict':
+          columns = ['id', 'name', 'employee_number', 'department_name'];
+          headers = ['ID', '员工姓名', '员工编号', '所属部门'];
+          break;
+      }
+
+      let html = `
+        <div class="table-responsive">
+          <table class="table table-hover">
+            <thead>
+              <tr>
+                ${headers.map(h => `<th>${h}</th>`).join('')}
+                <th style="width: 120px">操作</th>
+              </tr>
+            </thead>
+            <tbody>
+      `;
+
+      data.forEach(item => {
+        html += '<tr>';
+        columns.forEach(col => {
+          if (col.includes('class')) {
+            html += `<td><span class="badge badge-custom">${item[col] || ''}</span></td>`;
+          } else {
+            html += `<td>${item[col] || ''}</td>`;
+          }
+        });
+        html += `
+          <td>
+            <button class="btn btn-sm btn-outline-primary btn-action" onclick="editDict(${item.id})" title="编辑">
+              <i class="bi bi-pencil"></i>
+              <i class="fas fa-edit" style="display: none;"></i>
+              <span class="icon-edit" style="display: none;"></span>
+              <span class="icon-edit-fallback" style="display: none;">编辑</span>
+            </button>
+            <button class="btn btn-sm btn-outline-danger btn-action" onclick="deleteDict(${item.id})" title="删除">
+              <i class="bi bi-trash"></i>
+              <i class="fas fa-trash" style="display: none;"></i>
+              <span class="icon-delete" style="display: none;"></span>
+              <span class="icon-delete-fallback" style="display: none;">删除</span>
+            </button>
+          </td>
+        </tr>`;
+      });
+
+      html += '</tbody></table></div>';
+      $('#tableContent').html(html);
+      
+      // 检测并切换图标
+      setTimeout(checkIconSupport, 50);
+    }
+
+    // 编辑字典项
+    function editDict(id) {
+      const item = currentData.find(x => x.id == id);
+      if (!item) return;
+
+      $('#modalTitle').text('编辑字典项');
+      $('#dictId').val(item.id);
+      
+      // 根据表类型设置字段
+      const fieldMappings = {
+        'work_type_dict': { name: 'type', comment: 'comment' },
+        'affected_type_dict': { name: 'affected', comment: 'comment' },
+        'source_type_dict': { name: 'type', comment: 'comment' },
+        'work_record_status_dict': { name: 'status_name', comment: 'comment' },
+        'requirement_status_dict': { name: 'status', comment: 'comment' },
+        'issue_progress_dict': { name: 'progress', comment: 'comment' },
+        'department_dict': { name: 'name', comment: 'description' },
+        'employee_dict': { name: 'employee_name', comment: 'comment' }
+      };
+
+      const mapping = fieldMappings[currentTable];
+      if (mapping) {
+        $('#dictName').val(item[mapping.name] || '');
+        $('#dictComment').val(item[mapping.comment] || '');
+      }
+
+      // 显示特殊字段
+      if (currentTable === 'employee_dict') {
+        $('#dictName').closest('.mb-3').hide();
+        $('#dictComment').closest('.mb-3').hide();
+        $('#employeeNameField').show();
+        $('#employeeNumberField').show();
+        $('#departmentNameField').show();
+        $('#statusClassField').hide();
+        $('#progressClassField').hide();
+        $('#dictEmployeeName').val(item.name || '');
+        $('#dictEmployeeNumber').val(item.employee_number || '');
+        loadDepartmentOptions(item.department_name);
+      } else if (currentTable === 'work_record_status_dict') {
+        $('#dictName').closest('.mb-3').show();
+        $('#dictComment').closest('.mb-3').hide();
+        $('#employeeNameField').hide();
+        $('#employeeNumberField').hide();
+        $('#departmentNameField').hide();
+        $('#statusClassField').show();
+        $('#progressClassField').hide();
+        $('#dictStatusClass').val(item.status_class || 'bg-primary');
+      } else if (currentTable === 'requirement_status_dict') {
+        $('#dictName').closest('.mb-3').show();
+        $('#dictComment').closest('.mb-3').hide();
+        $('#employeeNameField').hide();
+        $('#employeeNumberField').hide();
+        $('#departmentNameField').hide();
+        $('#statusClassField').show();
+        $('#progressClassField').hide();
+        $('#dictStatusClass').val(item.requirement_status_class || 'bg-primary');
+      } else if (currentTable === 'issue_progress_dict') {
+        $('#dictName').closest('.mb-3').show();
+        $('#dictComment').closest('.mb-3').hide();
+        $('#employeeNameField').hide();
+        $('#employeeNumberField').hide();
+        $('#departmentNameField').hide();
+        $('#statusClassField').hide();
+        $('#progressClassField').show();
+        $('#dictProgressClass').val(item.progress_class || 'bg-primary');
+      } else {
+        $('#dictName').closest('.mb-3').show();
+        $('#dictComment').closest('.mb-3').show();
+        $('#employeeNameField').hide();
+        $('#employeeNumberField').hide();
+        $('#departmentNameField').hide();
+        if (currentTable === 'requirement_status_dict') {
+          $('#statusClassField').show();
+          $('#progressClassField').hide();
+        } else if (currentTable === 'issue_progress_dict') {
+          $('#statusClassField').hide();
+          $('#progressClassField').show();
+        } else {
+          $('#statusClassField').hide();
+          $('#progressClassField').hide();
+        }
+      }
+
+      $('#dictModal').modal('show');
+    }
+
+    // 删除字典项
+    function deleteDict(id) {
+      Swal.fire({
+        title: '确认删除？',
+        text: '删除后无法恢复！',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: '确认删除',
+        cancelButtonText: '取消'
+      }).then((result) => {
+        if (result.isConfirmed) {
+          const data = {
+            table: currentTable,
+            id: id
+          };
+          
+          axios.delete('/api/dict', { data: data })
+            .then(res => {
+              if (res.data.success) {
+                showToast('success', '删除成功');
+                loadDictData(currentTable);
+              } else {
+                showToast('error', res.data.error || '删除失败');
+              }
+            })
+            .catch(err => {
+              showToast('error', '删除失败');
+              console.error(err);
+            });
+        }
+      });
+    }
+
+    // 保存字典项
+    function saveDict() {
+      if (!currentTable) {
+        showToast('error', '请先选择字典类型');
+        return;
+      }
+      const formData = new FormData($('#dictForm')[0]);
+      const data = Object.fromEntries(formData.entries());
+      
+      if (currentTable === 'employee_dict') {
+        if (!data.employee_name || !data.employee_name.trim()) {
+          showToast('error', '请输入员工姓名');
+          return;
+        }
+      } else {
+        if (!data.name || !data.name.trim()) {
+          showToast('error', '请输入名称');
+          return;
+        }
+      }
+
+      // 构建请求数据
+      let requestData;
+      if (currentTable === 'employee_dict') {
+        requestData = {
+          table: currentTable,
+          name: data.employee_name,
+          employee_number: data.employee_number,
+          department_name: data.department_name || ''
+        };
+      } else {
+        requestData = {
+          table: currentTable,
+          name: data.name,
+          comment: data.comment || ''
+        };
+      }
+
+      // 添加特殊字段
+      if (currentTable === 'work_record_status_dict' || currentTable === 'requirement_status_dict') {
+        requestData.status_class = data.status_class || 'bg-primary';
+      } else if (currentTable === 'issue_progress_dict') {
+        requestData.progress_class = data.progress_class || 'bg-primary';
+      }
+
+      // 如果是编辑模式，添加ID
+      if (data.id) {
+        requestData.id = parseInt(data.id);
+      }
+
+      const method = data.id ? 'put' : 'post';
+      const url = '/api/dict';
+
+      axios[method](url, requestData)
+        .then(res => {
+          if (res.data.success) {
+            showToast('success', data.id ? '修改成功' : '新增成功');
+            $('#dictModal').modal('hide');
+            loadDictData(currentTable);
+          } else {
+            showToast('error', res.data.error || '操作失败');
+          }
+        })
+        .catch(err => {
+          showToast('error', '操作失败');
+          console.error(err);
+        });
+    }
+
+    // 加载部门下拉选项
+    function loadDepartmentOptions(selected) {
+      $.get('/api/dict', { table: 'department_dict' }, function(res) {
+        let html = '<option value="">请选择部门</option>';
+        res.forEach(function(item) {
+          html += `<option value="${item.name}"${selected && item.name === selected ? ' selected' : ''}>${item.name}</option>`;
+        });
+        $('#dictDepartmentName').html(html);
+      });
+    }
+
+    // 事件绑定
+    $(function() {
+      // 检测图标支持
+      setTimeout(checkIconSupport, 100);
+      
+      // 字典卡片点击
+      $('.dict-card').click(function() {
+        $('.dict-card').removeClass('active');
+        $(this).addClass('active');
+        const table = $(this).data('table');
+        loadDictData(table);
+      });
+
+      // 新增按钮
+      $('#btnAddDict').click(function() {
+        $('#modalTitle').text('新增字典项');
+        $('#dictForm')[0].reset();
+        $('#dictId').val('');
+        // 针对员工字典弹窗字段显示优化
+        if (currentTable === 'employee_dict') {
+          $('#dictName').closest('.mb-3').hide();
+          $('#dictComment').closest('.mb-3').hide();
+          $('#employeeNameField').show();
+          $('#employeeNumberField').show();
+          $('#departmentNameField').show();
+          $('#statusClassField').hide();
+          $('#progressClassField').hide();
+          loadDepartmentOptions();
+        } else if (currentTable === 'work_record_status_dict') {
+          $('#dictName').closest('.mb-3').show();
+          $('#dictComment').closest('.mb-3').hide();
+          $('#employeeNameField').hide();
+          $('#employeeNumberField').hide();
+          $('#departmentNameField').hide();
+          $('#statusClassField').show();
+          $('#progressClassField').hide();
+        } else {
+          $('#dictName').closest('.mb-3').show();
+          $('#dictComment').closest('.mb-3').show();
+          $('#employeeNameField').hide();
+          $('#employeeNumberField').hide();
+          $('#departmentNameField').hide();
+          if (currentTable === 'requirement_status_dict') {
+            $('#statusClassField').show();
+            $('#progressClassField').hide();
+          } else if (currentTable === 'issue_progress_dict') {
+            $('#statusClassField').hide();
+            $('#progressClassField').show();
+          } else {
+            $('#statusClassField').hide();
+            $('#progressClassField').hide();
+          }
+        }
+        $('#dictModal').modal('show');
+      });
+
+      // 保存按钮
+      $('#btnSaveDict').click(saveDict);
+
+      // 页面加载后自动选中第一个字典卡片，保证currentTable有值
+      setTimeout(function() {
+        $('.dict-card').first().trigger('click');
+      }, 0);
+    });
+  </script>
+</body>
+</html> 

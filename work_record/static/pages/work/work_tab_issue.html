@@ -1,0 +1,367 @@
+<link rel="stylesheet" href="../../dist/font/bootstrap-icons.css">
+<div>
+  <div class="d-flex justify-content-between mb-3">
+    <div class="d-flex align-items-center gap-2">
+      <label class="form-label mb-0">来源</label>
+      <select id="sourceTypeFilter" class="form-select form-select-sm" style="width:120px"></select>
+      <label class="form-label mb-0 ms-2">影响</label>
+      <select id="affectedFilter" class="form-select form-select-sm" style="width:120px"></select>
+    </div>
+    <button class="btn btn-primary" id="newIssue" title="新建"><i class="bi bi-file-earmark-plus"></i></button>
+  </div>
+  <div id="issueTableWrap"></div>
+  <div class="d-flex justify-content-end align-items-center mt-3 gap-3">
+    <nav id="issuePagination" class="mb-0"></nav>
+    <div class="d-flex align-items-center gap-2">
+      <label class="form-label mb-0">每页</label>
+      <select id="issuePageSize" class="form-select form-select-sm" style="width:80px">
+        <option value="10">10</option>
+        <option value="20" selected>20</option>
+        <option value="50">50</option>
+      </select>
+      <span class="text-muted small">条</span>
+    </div>
+  </div>
+</div>
+<script src="../../dist/js/sweetalert2.all.min.js"></script>
+<script>
+var issuePage = 1, issuePageSize = 20, issueSourceType = '', issueAffected = '';
+
+function loadSourceTypeOptions() {
+  axios.get('/api/dict', {params:{table:'source_type_dict'}}).then(res => {
+    let html = '<option value="">全部来源</option>';
+    for(const s of res.data) {
+      let text = s.type || s.name || '';
+      html += `<option value="${s.id}">${text}</option>`;
+    }
+    $('#sourceTypeFilter').html(html);
+  });
+}
+
+function loadAffectedOptions() {
+  axios.get('/api/dict', {params:{table:'affected_type_dict'}}).then(res => {
+    let html = '<option value="">全部影响</option>';
+    for(const s of res.data) {
+      let text = s.affected || s.type || s.name || '';
+      html += `<option value="${s.id}">${text}</option>`;
+    }
+    $('#affectedFilter').html(html);
+  });
+}
+
+function loadIssueRecords() {
+  axios.get('/api/issues', {
+    params: { page: issuePage, page_size: issuePageSize, source_type_id: issueSourceType, affected_id: issueAffected }
+  }).then(res => {
+    const { records, total, page, page_size } = res.data;
+    // 表头顺序：序号、提出人、问题标题、描述、进度、责任人、来源、影响、创建时间、操作
+    let html = `<table class="table table-hover align-middle"><thead><tr>
+      <th style="width: 60px">序号</th><th style="width: 100px">提出人</th><th style="width: 150px">问题标题</th><th style="width: 200px">描述</th><th style="width: 80px">进度</th><th style="width: 80px">责任人</th><th style="width: 80px">来源</th><th style="width: 80px">影响</th><th style="width: 100px">创建时间</th><th style="width: 120px">操作</th></tr></thead><tbody>`;
+    if (!records || records.length === 0) {
+      html += '<tr><td colspan="10" class="text-center text-muted">暂无数据</td></tr>';
+    } else {
+      let startIdx = (page-1)*page_size+1;
+      for (let i=0; i<records.length; i++) {
+        const r = records[i];
+        html += `<tr><td>${startIdx+i}</td><td style="max-width: 100px; word-wrap: break-word; white-space: normal;">${r.reported_by||''}</td><td style="max-width: 150px; word-wrap: break-word; white-space: normal;">${r.issue_title||''}</td>`;
+        html += `<td style="max-width: 200px; word-wrap: break-word; white-space: normal;">${r.description||''}</td>`;
+        html += `<td><span class="badge badge-status ${r.progress_class||''}">${r.progress_name||''}</span></td>`;
+        html += `<td style="max-width: 80px; word-wrap: break-word; white-space: normal;">${r.employee_name||''}</td><td style="max-width: 80px; word-wrap: break-word; white-space: normal;">${r.source_type_name||''}</td><td style="max-width: 80px; word-wrap: break-word; white-space: normal;">${r.affected_name||''}</td>`;
+        html += `<td>${(r.create_time||'').slice(0,10)}</td>`;
+        html += `<td style="vertical-align:middle;">
+          <button class="btn btn-sm btn-outline-primary btn-action btn-edit ms-1" data-id="${r.id}" title="修改"><i class="bi bi-pencil"></i></button>
+          <button class="btn btn-sm btn-outline-danger btn-action btn-del ms-1" data-id="${r.id}" title="删除"><i class="bi bi-trash"></i></button>
+        </td></tr>`;
+      }
+    }
+    html += '</tbody></table>';
+    $('#issueTableWrap').html(html);
+    
+    // 分页
+    let pageCount = Math.ceil(total/page_size);
+    let pagHtml = `<ul class="pagination pagination-sm mb-0">`;
+    for(let i=1;i<=pageCount;i++) {
+      pagHtml += `<li class="page-item${i===page?' active':''}"><a class="page-link" href="#">${i}</a></li>`;
+    }
+    pagHtml += '</ul>';
+    $('#issuePagination').html(pagHtml);
+    $('#issuePagination .page-link').off('click').on('click',function(e){
+      e.preventDefault();
+      issuePage = parseInt($(this).text());
+      loadIssueRecords();
+    });
+  });
+}
+
+// 操作栏事件
+$('#issueTableWrap').off('click', '.btn-del').on('click', '.btn-del', function(){
+  const id = $(this).data('id');
+  Swal.fire({
+    title: "确定删除？",
+    text: "删除后无法恢复！",
+    icon: "warning",
+    showCancelButton: true,
+    confirmButtonColor: "#3085d6",
+    cancelButtonColor: "#d33",
+    confirmButtonText: "确认删除",
+    cancelButtonText: "取消",
+    customClass: {
+      popup: 'swal-sm-popup',
+      title: 'swal-sm-title',
+      htmlContainer: 'swal-sm-text',
+      confirmButton: 'swal-sm-button',
+      cancelButton: 'swal-sm-button'
+    }
+  }).then((result) => {
+    if (result.isConfirmed) {
+      // 使用fetch替代axios，避免触发全局拦截器
+      fetch('/api/delete_issue', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({id: id})
+      }).then(response => {
+        if (response.ok) {
+          showSwalToast('success', '删除成功', 1500);
+          loadIssueRecords();
+        } else {
+          return response.json().then(data => {
+            throw new Error(data.error || '删除失败');
+          });
+        }
+      }).catch(err => {
+        showSwalToast('error', err.message || '删除失败', 2000);
+      });
+    }
+  });
+});
+
+$('#issueTableWrap').off('click', '.btn-edit').on('click', '.btn-edit', function(){
+  const id = $(this).data('id');
+  axios.get('/api/issues', {
+    params: { page: 1, page_size: 1000 }
+  }).then(res => {
+    const records = res.data.records || res.data;
+    const r = records.find(x => x.id == id);
+    if (!r) { showSwalToast('error', '未找到该问题', 2000); return; }
+    const $modal = $('#newIssueModal');
+    const formEl = $modal.find('#newIssueForm')[0];
+    if (formEl && typeof formEl.reset === 'function') formEl.reset();
+    $modal.find('.modal-title').text('修改问题');
+    $modal.find('[name=id]').val(r.id);
+    Promise.all([
+      loadDepartmentOptions($modal.find('[name=department_id]'), r.department_id),
+      loadDictToSelect('issue_progress_dict', $modal.find('[name=progress_id]')),
+      loadDictToSelect('affected_type_dict', $modal.find('[name=affected_id]')),
+      loadDictToSelect('source_type_dict', $modal.find('[name=source_type_id]'))
+    ]).then(() => {
+      setTimeout(() => {
+        $modal.find('[name=department_id]').val(r.department_id).trigger('change');
+        $modal.find('[name=progress_id]').val(r.progress_id).trigger('change');
+        $modal.find('[name=affected_id]').val(r.affected_id).trigger('change');
+        $modal.find('[name=source_type_id]').val(r.source_type_id).trigger('change');
+        loadEmployeeOptionsByDept($modal.find('[name=employee_id]'), r.department_id, r.employee_id);
+      }, 100);
+    });
+    $modal.find('[name=issue_title]').val(r.issue_title);
+    $modal.find('[name=reported_by]').val(r.reported_by);
+    $modal.find('[name=description]').val(r.description);
+    // 重新绑定部门下拉change事件
+    $modal.find('[name=department_id]').off('change').on('change', function() {
+      const deptId = $(this).val();
+      loadEmployeeOptionsByDept($modal.find('[name=employee_id]'), deptId, null);
+    });
+    $modal.modal('show');
+  });
+});
+
+// 新建问题模态框
+if (!document.getElementById('newIssueModal')) {
+  $('body').append(`
+  <div class="modal fade" id="newIssueModal" tabindex="-1">
+    <div class="modal-dialog modal-lg"><div class="modal-content">
+      <div class="modal-header"><h5 class="modal-title">新建问题</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-body">
+        <form id="newIssueForm">
+          <input type="hidden" name="id" />
+          <div class="row g-3">
+            <div class="col-md-6"><label class="form-label">问题标题</label><input name="issue_title" class="form-control" required></div>
+            <div class="col-md-6"><label class="form-label">提出人</label><input name="reported_by" class="form-control" required></div>
+            <div class="col-md-6"><label class="form-label">进度</label><select name="progress_id" class="form-select" required></select></div>
+            <div class="col-md-6"><label class="form-label">部门</label><select name="department_id" class="form-select"></select></div>
+            <div class="col-md-6"><label class="form-label">责任人</label><select name="employee_id" class="form-select"></select></div>
+            <div class="col-md-6"><label class="form-label">来源</label><select name="source_type_id" class="form-select" required></select></div>
+            <div class="col-md-6"><label class="form-label">影响</label><select name="affected_id" class="form-select" required></select></div>
+            <div class="col-12"><label class="form-label">描述</label><textarea name="description" class="form-control" rows="3"></textarea></div>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+        <button type="button" class="btn btn-primary" id="submitNewIssue">提交</button>
+      </div>
+    </div></div>
+  </div>`);
+}
+
+function loadDictToSelect(table, $select) {
+  axios.get('/api/dict', {params:{table}}).then(res=>{
+    let html = '<option value="">请选择</option>';
+    for(const d of res.data) {
+      let text = '';
+      if (table === 'affected_type_dict') {
+        text = d.affected || d.type || d.name || '';
+      } else if (table === 'source_type_dict') {
+        text = d.type || d.name || '';
+      } else if (table === 'issue_progress_dict') {
+        text = d.progress || d.status || d.name || '';
+      } else {
+        text = d.type || d.system || d.status_name || d.progress || d.status || d.comment || d.affected || '';
+      }
+      html += `<option value="${d.id}">${text}</option>`;
+    }
+    $select.html(html);
+  });
+}
+
+$('#newIssue').off('click').on('click', function(){
+  const $modal = $('#newIssueModal');
+  $modal.find('.modal-title').text('新建问题');
+  $modal.find('[name=id]').val(''); // 清空id，避免重复
+  loadDictToSelect('issue_progress_dict', $modal.find('[name=progress_id]'));
+  loadDictToSelect('affected_type_dict', $modal.find('[name=affected_id]'));
+  loadDictToSelect('source_type_dict', $modal.find('[name=source_type_id]'));
+  $modal.find('#newIssueForm')[0].reset();
+  // 加载部门下拉，并清空责任人下拉
+  loadDepartmentOptions($modal.find('[name=department_id]'), null);
+  $modal.find('[name=employee_id]').html('<option value="">请先选择部门</option>');
+  // 绑定部门下拉change事件
+  $modal.find('[name=department_id]').off('change').on('change', function() {
+    const deptId = $(this).val();
+    loadEmployeeOptionsByDept($modal.find('[name=employee_id]'), deptId, null);
+  });
+  $modal.modal('show');
+});
+
+// 新增/修改保存时区分接口
+$('#submitNewIssue').off('click').on('click', function(){
+  const $form = $('#newIssueForm')[0];
+  if(!$form.checkValidity()){ $form.reportValidity(); return; }
+  const formData = new FormData($form);
+  const data = {};
+  for(const [k,v] of formData.entries()) data[k]=v;
+  const isEdit = data.id && data.id.trim() !== '';
+  const url = isEdit ? '/api/update_issue' : '/api/add_issue';
+  
+  // 使用fetch替代axios，避免触发全局拦截器
+  fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(data)
+  }).then(response => {
+    if (response.ok) {
+      showSwalToast('success', isEdit ? '修改成功' : '新建成功', 1500);
+      $('#newIssueModal').modal('hide');
+      loadIssueRecords();
+    } else {
+      return response.json().then(data => {
+        throw new Error(data.error || (isEdit ? '修改失败' : '新建失败'));
+      });
+    }
+  }).catch(err => {
+    showSwalToast('error', err.message || (isEdit ? '修改失败' : '新建失败'), 2000);
+  });
+});
+
+// 分页大小变化事件
+$('#issuePageSize').on('change', function() {
+  issuePageSize = parseInt($(this).val());
+  issuePage = 1;
+  loadIssueRecords();
+});
+
+$(function(){
+  loadSourceTypeOptions();
+  loadAffectedOptions();
+  loadIssueRecords();
+  window.initTab_issue = function(){
+    loadSourceTypeOptions();
+    loadIssueRecords();
+  };
+  
+  // 来源过滤
+  $('#sourceTypeFilter').change(function(){
+    issueSourceType = $(this).val();
+    issuePage = 1; // 重置到第一页
+    loadIssueRecords();
+  });
+  
+  // 影响过滤
+  $('#affectedFilter').change(function(){
+    issueAffected = $(this).val();
+    issuePage = 1; // 重置到第一页
+    loadIssueRecords();
+  });
+});
+
+// 保证 tab 切换时自动刷新
+if (window.initTab_issue) window.initTab_issue();
+</script>
+<style>
+/* 表格整体字体、按钮、badge 缩小 */
+#issueTableWrap table th, #issueTableWrap table td {
+  font-size: 13px;
+  padding: 6px 8px;
+}
+#issueTableWrap .badge-status, #issueTableWrap .badge {
+  font-size: 12px;
+  padding: 3px 8px;
+}
+#issueTableWrap .btn {
+  font-size: 12px;
+  padding: 2px 6px;
+}
+/* 删除按钮始终显示，无需hover控制 */
+.btn-del .bi-trash { opacity: 1 !important; }
+.status-cell { position: relative; min-width: 110px; }
+.status-cell .badge-status {
+  display: inline-block;
+  min-width: 70px;
+  font-size: 1em;
+  padding: 0.45em 1.1em 0.45em 0.9em;
+  border-radius: 1.2em;
+  box-shadow: 0 2px 8px 0 rgba(0,0,0,0.07);
+  cursor: pointer;
+  transition: box-shadow 0.18s, background 0.18s;
+}
+.status-cell .badge-status:hover {
+  box-shadow: 0 4px 16px 0 rgba(0,0,0,0.13);
+  filter: brightness(1.08);
+}
+.swal-sm-popup {
+  max-width: 320px !important;
+  padding: 1.2em 1.2em 0.8em 1.2em !important;
+}
+.swal-sm-title {
+  font-size: 1.08em !important;
+}
+.swal-sm-text {
+  font-size: 0.98em !important;
+}
+.swal-sm-button {
+  font-size: 0.98em !important;
+  padding: 0.3em 1.2em !important;
+}
+.swal-toast-sm {
+  max-width: 320px !important;
+  padding: 0.7em 1.2em 0.7em 1.2em !important;
+  border-radius: 1.2em !important;
+}
+.swal-toast-title-sm {
+  font-size: 1.08em !important;
+}
+</style>
