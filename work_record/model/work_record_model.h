@@ -17,7 +17,7 @@ struct WorkRecord {
     int work_record_status_id;
     std::string status_name;
     std::string status_class;
-    std::string update_time;
+    std::string completion_time;
     int employee_id;
     std::string employee_name;
     int department_id;

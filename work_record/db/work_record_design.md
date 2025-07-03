@@ -84,7 +84,7 @@
 | affected_id          | INTEGER  | NOT NULL, 外键 | 影响类型ID   |
 | source_type_id       | INTEGER  | NOT NULL, 外键 | 来源类型ID   |
 | work_record_status_id| INTEGER  | NOT NULL, 外键 | 工单状态ID   |
-| update_time          | DATETIME | NOT NULL, 默认当前 | 更新时间 |
+| completion_time      | DATETIME | NOT NULL, 默认当前 | 完成时间 |
 | employee_id          | INTEGER  | 外键           | 完成人ID     |
 
 ### 11. work_record_files（工单文件关联表）

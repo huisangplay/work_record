@@ -29,7 +29,7 @@ inline bool insertWorkRecord(sqlite3* db, const WorkRecord& record, int& newId) 
 // 根据ID获取WorkRecord
 inline bool getWorkRecordById(sqlite3* db, int id, WorkRecord& record) {
     sqlite3_stmt* stmt = nullptr;
-    const char* sql = "SELECT id, requirement_id, work_type_id, affected_id, source_type_id, work_record_status_id, work_content, create_time, employee_id FROM work_record WHERE id = ?;";
+    const char* sql = "SELECT id, requirement_id, work_type_id, affected_id, source_type_id, work_record_status_id, work_content, create_time, completion_time, employee_id FROM work_record WHERE id = ?;";
     if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK) {
         throw std::runtime_error(std::string("SQL prepare failed: ") + sqlite3_errmsg(db));
     }
@@ -45,7 +45,8 @@ inline bool getWorkRecordById(sqlite3* db, int id, WorkRecord& record) {
         record.work_record_status_id = sqlite3_column_int(stmt, 5);
         record.work_content = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 6));
         record.create_time = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 7));
-        record.employee_id = sqlite3_column_int(stmt, 8);
+        record.completion_time = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 8));
+        record.employee_id = sqlite3_column_int(stmt, 9);
         found = true;
     } else if (step != SQLITE_DONE) {
         std::string err = sqlite3_errmsg(db);
@@ -59,7 +60,7 @@ inline bool getWorkRecordById(sqlite3* db, int id, WorkRecord& record) {
 // 更新工单
 inline bool updateWorkRecord(sqlite3* db, const WorkRecord& record) {
     sqlite3_stmt* stmt = nullptr;
-    const char* sql = "UPDATE work_record SET requirement_id=?, work_type_id=?, affected_id=?, source_type_id=?, work_record_status_id=?, work_content=?, employee_id=?, update_time=datetime('now', 'localtime') WHERE id=?;";
+    const char* sql = "UPDATE work_record SET requirement_id=?, work_type_id=?, affected_id=?, source_type_id=?, work_record_status_id=?, work_content=?, employee_id=?, completion_time=? WHERE id=?;";
     if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK) {
         throw std::runtime_error(std::string("SQL prepare failed: ") + sqlite3_errmsg(db));
     }
@@ -70,7 +71,8 @@ inline bool updateWorkRecord(sqlite3* db, const WorkRecord& record) {
     sqlite3_bind_int(stmt, 5, record.work_record_status_id);
     sqlite3_bind_text(stmt, 6, record.work_content.c_str(), -1, SQLITE_TRANSIENT);
     sqlite3_bind_int(stmt, 7, record.employee_id);
-    sqlite3_bind_int(stmt, 8, record.id);
+    sqlite3_bind_text(stmt, 8, record.completion_time.c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_int(stmt, 9, record.id);
     int step = sqlite3_step(stmt);
     bool ok = (step == SQLITE_DONE);
     if (!ok) {
@@ -89,7 +91,7 @@ inline std::vector<WorkRecord> queryWorkRecordsPagedDao(sqlite3* db, const std::
         SELECT w.id, w.requirement_id, r.title as requirement_title, w.work_type_id, t.type as work_type,
                w.affected_id, a.affected as affected_name, w.source_type_id, m.type as source_type_name,
                w.work_record_status_id, d.status_name, d.status_class as status_class,
-               w.work_content, w.create_time, w.employee_id, e.name as employee_name, e.department_id
+               w.work_content, w.create_time, w.completion_time, w.employee_id, e.name as employee_name, e.department_id
         FROM work_record w
         LEFT JOIN requirement_record r ON w.requirement_id = r.id
         LEFT JOIN work_type_dict t ON w.work_type_id = t.id
@@ -105,7 +107,7 @@ inline std::vector<WorkRecord> queryWorkRecordsPagedDao(sqlite3* db, const std::
     if (!requirement_id.empty()) where += (where.empty() ? " WHERE " : " AND ") + std::string("w.requirement_id = ?");
     if (!work_type_id.empty()) where += (where.empty() ? " WHERE " : " AND ") + std::string("w.work_type_id = ?");
     sql += where;
-    sql += " ORDER BY w.id DESC LIMIT ? OFFSET ?;";
+    sql += " ORDER BY w.completion_time DESC LIMIT ? OFFSET ?;";
     sqlite3_stmt* stmt = nullptr;
     int rc = sqlite3_prepare_v2(db, sql.c_str(), -1, &stmt, nullptr);
     if (rc != SQLITE_OK) {
@@ -145,10 +147,12 @@ inline std::vector<WorkRecord> queryWorkRecordsPagedDao(sqlite3* db, const std::
             r.work_content = tmp12 ? tmp12 : "";
             const char* tmp13 = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 13));
             r.create_time = tmp13 ? tmp13 : "";
-            r.employee_id = sqlite3_column_int(stmt, 14);
-            const char* tmp15 = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 15));
-            r.employee_name = tmp15 ? tmp15 : "";
-            r.department_id = sqlite3_column_type(stmt, 16) == SQLITE_NULL ? 0 : sqlite3_column_int(stmt, 16);
+            const char* tmp14 = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 14));
+            r.completion_time = tmp14 ? tmp14 : "";
+            r.employee_id = sqlite3_column_int(stmt, 15);
+            const char* tmp16 = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 16));
+            r.employee_name = tmp16 ? tmp16 : "";
+            r.department_id = sqlite3_column_type(stmt, 17) == SQLITE_NULL ? 0 : sqlite3_column_int(stmt, 17);
             records.push_back(r);
         } else if (step == SQLITE_DONE) {
             break;

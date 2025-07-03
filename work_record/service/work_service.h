@@ -16,6 +16,7 @@
 #include "../dao/requirement_record_dao.h"
 #include "../dao/work_record_status_dict_dao.h"
 #include "../service/requirement_service.h"
+#include "../util/string_util.h"
 extern sqlite3* db;
 using namespace httplib;
 using json = nlohmann::json;
@@ -33,6 +34,17 @@ inline void get_work_records(const Request& req, Response& res) {
         newRecord.work_record_status_id = std::stoi(req.get_file_value("work_record_status_id").content);
         newRecord.work_content = req.get_file_value("work_content").content;
         newRecord.employee_id = std::stoi(req.get_file_value("employee_id").content);
+
+        // 新建工单时处理completion_time
+        if (req.has_file("completion_time")) {
+            newRecord.completion_time = req.get_file_value("completion_time").content;
+        }
+        if (newRecord.completion_time.empty() || newRecord.completion_time == "") {
+            time_t now = time(nullptr);
+            char buf[20];
+            strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", localtime(&now));
+            newRecord.completion_time = buf;
+        }
 
         RequirementRecord reqInfo;
         if (!getRequirementById(db, newRecord.requirement_id, reqInfo)) {
@@ -144,7 +156,8 @@ inline void get_all_work_records(const Request& req, Response& res) {
             {"employee_id", r.employee_id},
             {"employee_name", r.employee_name},
             {"department_id", r.department_id},
-            {"files", filesJson}
+            {"files", filesJson},
+            {"completion_time", r.completion_time}
         });
     }
     nlohmann::json resp = {
@@ -298,7 +311,8 @@ inline void download_file(const Request& req, Response& res) {
         return;
     }
     std::string fullPath = "./static" + path;
-    std::ifstream ifs(fullPath, std::ios::binary);
+    std::wstring wfullPath = utf8string2wstring(fullPath);
+    std::ifstream ifs(wfullPath.c_str(), std::ios::binary);
     if (!ifs) {
         res.status = 404;
         res.set_content("File not found", "text/plain");
@@ -450,6 +464,15 @@ inline void update_work_record(const Request& req, Response& res) {
             if (!newIdsStr.empty()) insertWorkFileRel(db, record.id, std::stoi(newIdsStr));
         }
         // 4. 更新工单其它字段
+        if (req.has_file("completion_time")) {
+            record.completion_time = req.get_file_value("completion_time").content;
+        }
+        if (record.completion_time.empty() || record.completion_time == "") {
+            time_t now = time(nullptr);
+            char buf[20];
+            strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", localtime(&now));
+            record.completion_time = buf;
+        }
         updateWorkRecord(db, record);
         res.set_content(json{{"success", true}, {"new_file_ids", newFileIds}}.dump(), "application/json");
     } catch (const std::exception& e) {

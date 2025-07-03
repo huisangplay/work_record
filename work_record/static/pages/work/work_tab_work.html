@@ -88,9 +88,9 @@ function loadWorkRecords() {
     params: { scope: workScope, page: workPage, page_size: workPageSize, status_id: workStatus, affected_id: workAffected, source_type_id: workSourceType, requirement_id: workRequirement, work_type_id: workType }
   }).then(res => {
     const { records, total, page, page_size } = res.data;
-    // 表头顺序：序号、内容、类型、状态、来源、影响、关联需求、完成人、创建时间、文件、操作
+    // 表头顺序：序号、内容、类型、状态、来源、影响、关联需求、完成人、完成时间、文件、操作
     let html = `<table class="table table-hover align-middle"><thead><tr>
-      <th style="width: 60px">序号</th><th style="width: 200px">内容</th><th style="width: 80px">类型</th><th style="width: 80px">状态</th><th style="width: 80px">来源</th><th style="width: 80px">影响</th><th style="width: 120px">关联需求</th><th style="width: 80px">完成人</th><th style="width: 100px">创建时间</th><th style="width: 320px">文件</th><th style="width: 120px">操作</th></tr></thead><tbody>`;
+      <th style="width: 60px">序号</th><th style="width: 200px">内容</th><th style="width: 80px">类型</th><th style="width: 80px">状态</th><th style="width: 80px">来源</th><th style="width: 80px">影响</th><th style="width: 120px">关联需求</th><th style="width: 80px">完成人</th><th style="width: 100px">完成时间</th><th style="width: 320px">文件</th><th style="width: 120px">操作</th></tr></thead><tbody>`;
     if (!records || records.length === 0) {
       html += '<tr><td colspan="11" class="text-center text-muted">暂无数据</td></tr>';
     } else {
@@ -100,7 +100,7 @@ function loadWorkRecords() {
         html += `<tr><td>${startIdx+i}</td><td style="max-width: 200px; word-wrap: break-word; white-space: normal;">${r.work_content||''}</td><td>${r.work_type||''}</td>`;
         html += `<td><span class="badge badge-status ${r.status_class||''}">${r.status_name||''}</span></td>`;
         html += `<td style="max-width: 80px; word-wrap: break-word; white-space: normal;">${r.source_type_name||''}</td><td style="max-width: 80px; word-wrap: break-word; white-space: normal;">${r.affected_name||''}</td><td style="max-width: 120px; word-wrap: break-word; white-space: normal;">${r.requirement_title||''}</td>`;
-        html += `<td style="max-width: 80px; word-wrap: break-word; white-space: normal;">${r.employee_name||''}</td><td>${(r.create_time||'').slice(0,10)}</td><td style="font-size:0.95em; max-width: 320px;">`;
+        html += `<td style="max-width: 80px; word-wrap: break-word; white-space: normal;">${r.employee_name||''}</td><td>${(r.completion_time||'').slice(0,10)}</td><td style="font-size:0.95em; max-width: 320px;">`;
         if (r.files && Object.keys(r.files).length) {
           let fileLinks = Object.values(r.files).map(f => `
             <span class="file-link-wrap position-relative group" style="display:inline-block;">
@@ -253,6 +253,9 @@ function loadWorkRecords() {
       $modal.data('deleteFileIds', deleteFileIds);
       $modal.data('uploadFiles', []);
       renderUploadFileList_edit($modal);
+      $modal.find('[name=completion_time]').val(
+        r.completion_time ? r.completion_time.replace(' ', 'T').slice(0, 16) : ''
+      );
       $modal.modal('show');
       // 绑定删除文件事件（只前端移除）
       $modal.find('#uploadFileList').off('click', '.file-del-x').on('click', '.file-del-x', function(){
@@ -346,6 +349,7 @@ if (!$('#newRecordModal').length) {
           <div class="col-md-4"><label class="form-label">部门</label><select name="department_id" class="form-select" required></select></div>
           <div class="col-md-4"><label class="form-label">完成人</label><select name="employee_id" class="form-select" required></select></div>
           <div class="col-md-8"><label class="form-label">内容</label><input name="work_content" class="form-control" required></div>
+          <div class="col-md-4"><label class="form-label">完成时间</label><input name="completion_time" type="datetime-local" class="form-control" required></div>
           <div class="col-12"><label class="form-label">上传文件</label>
             <div id="uploadFileList" class="mb-2"></div>
             <input type="file" id="newRecordFileInput" class="form-control" multiple></div>
@@ -411,10 +415,14 @@ function loadEmployeeOptionsByDept($select, deptId, selectedId) {
 }
 $('#newRecord').off('click').on('click', function(){
   const $modal = $('#newRecordModal');
-  $modal.find('.modal-title').text('新建工作记录');
-  var formEl = $modal.find('#newRecordForm')[0];
+  const formEl = $modal.find('#newRecordForm')[0];
   if (formEl && typeof formEl.reset === 'function') formEl.reset();
-  $modal.find('[name=id]').val('');
+  $modal.find('.modal-title').text('新建工作记录');
+  // 设置完成时间为当前本地时间
+  const now = new Date();
+  const pad = n => n<10?'0'+n:n;
+  const local = now.getFullYear() + '-' + pad(now.getMonth()+1) + '-' + pad(now.getDate()) + 'T' + pad(now.getHours()) + ':' + pad(now.getMinutes());
+  $modal.find('[name=completion_time]').val(local);
   loadRequirementOptions($modal.find('[name=requirement_id]'));
   loadDictToSelect('work_type_dict', $modal.find('[name=work_type_id]'));
   loadDictToSelect('affected_type_dict', $modal.find('[name=affected_id]'));

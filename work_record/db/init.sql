@@ -11,8 +11,8 @@ CREATE TABLE file_record (
     create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 
 );
-INSERT INTO file_record VALUES(107,'build.bat','/upload/2025/特色/build_1751462068.bat','2025-07-02 13:14:28');
-INSERT INTO file_record VALUES(114,'main.cpp','/upload/2025/特色/main_1751465268.cpp','2025-07-02 14:07:48');
+INSERT INTO file_record VALUES(121,'build.bat','/upload/2025/啊手动阀/build_1751540068.bat','2025-07-03 10:54:28');
+INSERT INTO file_record VALUES(122,'README.md','/upload/2025/啊手动阀/README_1751540238.md','2025-07-03 10:57:18');
 CREATE TABLE requirement_status_dict (
 
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -88,38 +88,6 @@ CREATE TABLE work_record_status_dict (
 INSERT INTO work_record_status_dict VALUES(1,'已完成','bg-success');
 INSERT INTO work_record_status_dict VALUES(2,'待确认','bg-warning');
 INSERT INTO work_record_status_dict VALUES(3,'处理中','bg-primary');
-CREATE TABLE work_record (
-
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-
-    requirement_id INTEGER NOT NULL,
-
-    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
-    work_type_id INTEGER NOT NULL,
-
-    work_content TEXT NOT NULL,
-
-    affected_id INTEGER NOT NULL,
-
-    source_type_id INTEGER NOT NULL,
-
-    work_record_status_id INTEGER NOT NULL,
-
-    update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, employee_id INTEGER,
-
-    FOREIGN KEY (requirement_id) REFERENCES requirement_record(id),
-
-    FOREIGN KEY (work_type_id) REFERENCES work_type_dict(id),
-
-    FOREIGN KEY (affected_id) REFERENCES "affected_type_dict"(id),
-
-    FOREIGN KEY (source_type_id) REFERENCES "source_type_dict"(id),
-
-    FOREIGN KEY (work_record_status_id) REFERENCES work_record_status_dict(id)
-
-);
-INSERT INTO work_record VALUES(19,10,'2025-06-29 08:55:36',1,'阿斯蒂风格和水水水水水水水水水水',1,1,1,'2025-07-02 21:52:45',5);
 CREATE TABLE work_record_files (
 
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -133,8 +101,8 @@ CREATE TABLE work_record_files (
     FOREIGN KEY (file_record_id) REFERENCES file_record(id) ON DELETE CASCADE
 
 );
-INSERT INTO work_record_files VALUES(88,19,107);
-INSERT INTO work_record_files VALUES(95,19,114);
+INSERT INTO work_record_files VALUES(102,1,121);
+INSERT INTO work_record_files VALUES(103,2,122);
 CREATE TABLE [affected_type_dict](
 
   [id] INTEGER PRIMARY KEY AUTOINCREMENT, 
@@ -198,10 +166,6 @@ CREATE TABLE IF NOT EXISTS "issue_record"(
 INSERT INTO issue_record VALUES(1,'用户反馈','飞行控制响应延迟','在海拔3000米以上出现控制延迟',3,'王工程师',1,1,'2025-06-27 07:59:03','2025-06-27 07:59:03',NULL);
 INSERT INTO issue_record VALUES(2,'测试报告','物料编码冲突','批量导入时出现重复编码',3,'张设计师',2,2,'2025-06-27 07:59:03','2025-06-27 07:59:03',NULL);
 INSERT INTO issue_record VALUES(3,'运维监控','协同设计文件锁异常','偶发文件锁定无法释放',5,'',2,1,'2025-06-27 07:59:03','2025-06-27 07:59:03',5);
-INSERT INTO issue_record VALUES(4,'buf202522234323','前申报卡流程','123',2,'周辉',1,1,'2025-06-29 09:32:31','2025-06-29 09:32:31',NULL);
-INSERT INTO issue_record VALUES(5,'的风格和','的风格和','的风格和的风格和',1,'',1,3,'2025-06-29 10:29:15','2025-06-29 10:29:15',NULL);
-INSERT INTO issue_record VALUES(6,'buf202522234323','前申报卡流程','56',1,'',2,2,'2025-06-29 13:37:22','2025-06-29 13:37:22',5);
-INSERT INTO issue_record VALUES(7,'123','123','123',2,'',2,2,'2025-07-01 12:44:42','2025-07-01 12:44:42',5);
 CREATE TABLE [requirement_record](
 
   [id] INTEGER PRIMARY KEY AUTOINCREMENT, 
@@ -219,21 +183,41 @@ CREATE TABLE [requirement_record](
   [source_type_id] INTEGER NOT NULL REFERENCES [source_type_dict]([id]), 
 
   [employee_id] INTEGER REFERENCES [employee_dict]([id]));
-INSERT INTO requirement_record VALUES(3,'2025-06-27 07:59:02','2025-06-27 07:59:02','协同设计流程改进',4,4,4,5);
-INSERT INTO requirement_record VALUES(10,'2025-06-29 03:30:31','2025-06-29 03:30:31','特色',3,1,2,5);
-INSERT INTO requirement_record VALUES(19,'2025-07-01 14:18:01','2025-07-01 14:18:01','12',3,1,3,6);
-INSERT INTO requirement_record VALUES(20,'2025-07-02 13:54:02','2025-07-02 13:54:02','看看',6,1,1,6);
+INSERT INTO requirement_record VALUES(23,'2025-07-03 10:54:04','2025-07-03 10:54:04','啊手动阀',3,2,2,5);
+CREATE TABLE [work_record](
+
+  [id] INTEGER PRIMARY KEY AUTOINCREMENT, 
+
+  [requirement_id] INTEGER NOT NULL REFERENCES [requirement_record]([id]), 
+
+  [create_time] DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, 
+
+  [work_type_id] INTEGER NOT NULL REFERENCES [work_type_dict]([id]), 
+
+  [work_content] TEXT NOT NULL, 
+
+  [affected_id] INTEGER NOT NULL REFERENCES [affected_type_dict]([id]), 
+
+  [source_type_id] INTEGER NOT NULL REFERENCES [source_type_dict]([id]), 
+
+  [work_record_status_id] INTEGER NOT NULL REFERENCES [work_record_status_dict]([id]), 
+
+  [completion_time] DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, 
+
+  [employee_id] INTEGER);
+INSERT INTO work_record VALUES(1,23,'2025-07-03 10:54:28',2,'撒大蘇打搜索的',2,2,2,'2025-03-14T10:54',6);
+INSERT INTO work_record VALUES(2,23,'2025-07-03 10:57:18',2,'撒大蘇打搜索的',1,1,1,'2025-07-03 10:57:18',5);
 INSERT INTO sqlite_sequence VALUES('requirement_status_dict',12);
 INSERT INTO sqlite_sequence VALUES('source_type_dict',7);
 INSERT INTO sqlite_sequence VALUES('work_type_dict',10);
-INSERT INTO sqlite_sequence VALUES('file_record',114);
+INSERT INTO sqlite_sequence VALUES('file_record',122);
 INSERT INTO sqlite_sequence VALUES('issue_progress_dict',9);
 INSERT INTO sqlite_sequence VALUES('work_record_status_dict',8);
-INSERT INTO sqlite_sequence VALUES('work_record',32);
-INSERT INTO sqlite_sequence VALUES('work_record_files',95);
+INSERT INTO sqlite_sequence VALUES('work_record_files',103);
 INSERT INTO sqlite_sequence VALUES('affected_type_dict',7);
 INSERT INTO sqlite_sequence VALUES('department_dict',7);
 INSERT INTO sqlite_sequence VALUES('employee_dict',6);
-INSERT INTO sqlite_sequence VALUES('issue_record',7);
-INSERT INTO sqlite_sequence VALUES('requirement_record',20);
+INSERT INTO sqlite_sequence VALUES('issue_record',11);
+INSERT INTO sqlite_sequence VALUES('requirement_record',23);
+INSERT INTO sqlite_sequence VALUES('work_record',2);
 COMMIT;
