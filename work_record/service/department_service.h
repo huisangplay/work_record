@@ -4,10 +4,9 @@
 #include "../third_party/httplib.h"
 #include "../third_party/json.hpp"
 #include "../db/sqlite3.h"
-extern sqlite3* db;
 using namespace httplib;
 using json = nlohmann::json;
-
+extern sqlite3 * db;
 // 获取所有部门
 inline void get_all_departments(const Request& req, Response& res) {
     try {

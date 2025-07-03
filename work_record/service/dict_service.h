@@ -11,7 +11,7 @@
 #include "../dao/department_dict_dao.h"
 #include "../dao/employee_dict_dao.h"
 #include "../service/requirement_service.h"
-
+extern sqlite3 * db;
 // 获取所有字典表通用接口重构
 inline void get_dict(const Request& req, Response& res) {
     try {

@@ -8,10 +8,9 @@
 #include "../db/db_util.h"
 #include <vector>
 
-extern sqlite3* db;
 using namespace httplib;
 using json = nlohmann::json;
-
+extern sqlite3 * db;
 // 错误码
 enum RequirementProgressErrorCode {
     REQUIREMENT_PROGRESS_NO_ERROR = 0,

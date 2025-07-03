@@ -3,65 +3,48 @@
 #include "../db/sqlite3.h"
 #include "../constants/constants_sql.h"
 #include <vector>
+#include "../db/db_util.h"
+using namespace db_util;
 
 inline std::vector<RequirementStatusDict> queryAllRequirementStatusDict(sqlite3* db) {
     std::vector<RequirementStatusDict> list;
-    const char* sql = constants_sql::SQL_SELECT_ALL_REQUIREMENT_STATUS_DICT;
     sqlite3_stmt* stmt;
-    if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) == SQLITE_OK) {
-        while (sqlite3_step(stmt) == SQLITE_ROW) {
-            RequirementStatusDict d;
-            d.id = sqlite3_column_int(stmt, 0);
-            d.status = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 1));
-            d.comment = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 2));
-            d.requirement_status_class = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 3));
-            list.push_back(d);
-        }
-        sqlite3_finalize(stmt);
-    }
-    return list;    
+    db_util::prepare_throw(db, constants_sql::SQL_SELECT_ALL_REQUIREMENT_STATUS_DICT, &stmt);
+    db_util::exec_select(db, stmt, [&](sqlite3_stmt* s){
+        RequirementStatusDict d;
+        d.id = sqlite3_column_int(s, 0);
+        d.status = reinterpret_cast<const char*>(sqlite3_column_text(s, 1));
+        d.comment = reinterpret_cast<const char*>(sqlite3_column_text(s, 2));
+        d.requirement_status_class = reinterpret_cast<const char*>(sqlite3_column_text(s, 3));
+        list.push_back(d);
+    });
+    return list;
 }
 
 inline bool insertRequirementStatusDict(sqlite3* db, RequirementStatusDict& item) {
-    const char* sql = constants_sql::SQL_INSERT_REQUIREMENT_STATUS_DICT;
     sqlite3_stmt* stmt;
-    if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) == SQLITE_OK) {
-        sqlite3_bind_text(stmt, 1, item.status.c_str(), -1, SQLITE_STATIC);
-        sqlite3_bind_text(stmt, 2, item.comment.c_str(), -1, SQLITE_STATIC);
-        sqlite3_bind_text(stmt, 3, item.requirement_status_class.c_str(), -1, SQLITE_STATIC);
-        if (sqlite3_step(stmt) == SQLITE_DONE) {
-            item.id = sqlite3_last_insert_rowid(db);
-            sqlite3_finalize(stmt);
-            return true;
-        }
-        sqlite3_finalize(stmt);
-    }
-    return false;
+    db_util::prepare_throw(db, constants_sql::SQL_INSERT_REQUIREMENT_STATUS_DICT, &stmt);
+    sqlite3_bind_text(stmt, 1, item.status.c_str(), -1, SQLITE_STATIC);
+    sqlite3_bind_text(stmt, 2, item.comment.c_str(), -1, SQLITE_STATIC);
+    sqlite3_bind_text(stmt, 3, item.requirement_status_class.c_str(), -1, SQLITE_STATIC);
+    if (!db_util::exec_stmt_done(db, stmt)) return false;
+    item.id = sqlite3_last_insert_rowid(db);
+    return true;
 }
 
 inline bool updateRequirementStatusDict(sqlite3* db, const RequirementStatusDict& item) {
-    const char* sql = constants_sql::SQL_UPDATE_REQUIREMENT_STATUS_DICT;
     sqlite3_stmt* stmt;
-    if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) == SQLITE_OK) {
-        sqlite3_bind_text(stmt, 1, item.status.c_str(), -1, SQLITE_STATIC);
-        sqlite3_bind_text(stmt, 2, item.comment.c_str(), -1, SQLITE_STATIC);
-        sqlite3_bind_text(stmt, 3, item.requirement_status_class.c_str(), -1, SQLITE_STATIC);
-        sqlite3_bind_int(stmt, 4, item.id);
-        bool success = sqlite3_step(stmt) == SQLITE_DONE;
-        sqlite3_finalize(stmt);
-        return success;
-    }
-    return false;
+    db_util::prepare_throw(db, constants_sql::SQL_UPDATE_REQUIREMENT_STATUS_DICT, &stmt);
+    sqlite3_bind_text(stmt, 1, item.status.c_str(), -1, SQLITE_STATIC);
+    sqlite3_bind_text(stmt, 2, item.comment.c_str(), -1, SQLITE_STATIC);
+    sqlite3_bind_text(stmt, 3, item.requirement_status_class.c_str(), -1, SQLITE_STATIC);
+    sqlite3_bind_int(stmt, 4, item.id);
+    return db_util::exec_stmt_done(db, stmt);
 }
 
 inline bool deleteRequirementStatusDict(sqlite3* db, int id) {
-    const char* sql = constants_sql::SQL_DELETE_REQUIREMENT_STATUS_DICT;
     sqlite3_stmt* stmt;
-    if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) == SQLITE_OK) {
-        sqlite3_bind_int(stmt, 1, id);
-        bool success = sqlite3_step(stmt) == SQLITE_DONE;
-        sqlite3_finalize(stmt);
-        return success;
-    }
-    return false;
+    db_util::prepare_throw(db, constants_sql::SQL_DELETE_REQUIREMENT_STATUS_DICT, &stmt);
+    sqlite3_bind_int(stmt, 1, id);
+    return db_util::exec_stmt_done(db, stmt);
 }

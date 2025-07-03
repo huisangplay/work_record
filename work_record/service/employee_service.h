@@ -4,10 +4,9 @@
 #include "../third_party/httplib.h"
 #include "../third_party/json.hpp"
 #include "../db/sqlite3.h"
-extern sqlite3* db;
 using namespace httplib;
 using json = nlohmann::json;
-
+extern sqlite3 * db;
 // 获取所有人员，支持 department_id 过滤
 inline void get_all_employees(const Request& req, Response& res) {
     try {

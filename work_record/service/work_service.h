@@ -17,10 +17,10 @@
 #include "../dao/work_record_status_dict_dao.h"
 #include "../service/requirement_service.h"
 #include "../util/string_util.h"
-extern sqlite3* db;
 using namespace httplib;
 using json = nlohmann::json;
 namespace fs = std::filesystem;
+extern sqlite3 * db;
 
 inline void get_work_records(const Request& req, Response& res) {
     sqlite3_exec(db, "BEGIN TRANSACTION;", 0, 0, 0);
@@ -192,58 +192,53 @@ inline void get_work_record_status_dict(const Request& req, Response& res) {
 // 删除工单接口重构
 inline void delete_work_record(const Request& req, Response& res) {
     int id = std::stoi(req.matches[1]);
-    // 查出所有 file_record_id 及路径
-    std::vector<std::pair<int, std::string>> fileInfos;
-    const char* selSql = constants_sql::SQL_SELECT_WORK_FILES;
-    sqlite3_stmt* selStmt;
-    if (sqlite3_prepare_v2(db, selSql, -1, &selStmt, nullptr) == SQLITE_OK) {
-        sqlite3_bind_int(selStmt, 1, id);
-        while (sqlite3_step(selStmt) == SQLITE_ROW) {
-            int fid = sqlite3_column_int(selStmt, 0);
-            std::string fpath = reinterpret_cast<const char*>(sqlite3_column_text(selStmt, 1));
-            fileInfos.emplace_back(fid, fpath);
-        }
-        sqlite3_finalize(selStmt);
-    }
-    // 删除 work_record_files 关联
-    deleteWorkFileRelByWork(db, id);
-    // 删除 file_record 及物理文件
-    std::set<std::string> dirSet;
-    for (const auto& [fid, fpath] : fileInfos) {
-        deleteFileRecord(db, fid);
-        std::string fullPath = "./static" + fpath;
-        std::error_code ec;
-        fs::remove(fs::path(fullPath), ec);
-        auto dir = fs::path(fullPath).parent_path();
-        dirSet.insert(dir.string());
-    }
-    // 删除空目录（只删到 upload/年/需求名 这一级）
-    for (const auto& dir : dirSet) {
-        std::error_code ec;
-        auto p = fs::path(dir);
-        if (fs::exists(p, ec) && fs::is_directory(p, ec) && fs::is_empty(p, ec)) {
-            fs::remove(p, ec);
-            auto parent = p.parent_path();
-            if (fs::exists(parent, ec) && fs::is_directory(parent, ec) && fs::is_empty(parent, ec) && parent.filename() != "upload") {
-                fs::remove(parent, ec);
+    try {
+        db_util::with_transaction(db, [&]() {
+            // 查出所有 file_record_id 及路径
+            std::vector<std::pair<int, std::string>> fileInfos;
+            sqlite3_stmt* selStmt = nullptr;
+            db_util::prepare_throw(db, constants_sql::SQL_SELECT_WORK_FILES, &selStmt);
+            sqlite3_bind_int(selStmt, 1, id);
+            db_util::exec_select(db, selStmt, [&](sqlite3_stmt* s){
+                int fid = sqlite3_column_int(s, 0);
+                std::string fpath = reinterpret_cast<const char*>(sqlite3_column_text(s, 1));
+                fileInfos.emplace_back(fid, fpath);
+            });
+            // 删除 work_record_files 关联
+            deleteWorkFileRelByWork(db, id);
+            // 删除 file_record 及物理文件
+            std::set<std::string> dirSet;
+            for (const auto& [fid, fpath] : fileInfos) {
+                deleteFileRecord(db, fid);
+                std::string fullPath = "./static" + fpath;
+                std::error_code ec;
+                fs::remove(fs::path(fullPath), ec);
+                auto dir = fs::path(fullPath).parent_path();
+                dirSet.insert(dir.string());
             }
-        }
+            // 删除空目录（只删到 upload/年/需求名 这一级）
+            for (const auto& dir : dirSet) {
+                std::error_code ec;
+                auto p = fs::path(dir);
+                if (fs::exists(p, ec) && fs::is_directory(p, ec) && fs::is_empty(p, ec)) {
+                    fs::remove(p, ec);
+                    auto parent = p.parent_path();
+                    if (fs::exists(parent, ec) && fs::is_directory(parent, ec) && fs::is_empty(parent, ec) && parent.filename() != "upload") {
+                        fs::remove(parent, ec);
+                    }
+                }
+            }
+            // 删除 work_record 主表记录
+            sqlite3_stmt* delStmt = nullptr;
+            db_util::prepare_throw(db, "DELETE FROM work_record WHERE id = ?;", &delStmt);
+            sqlite3_bind_int(delStmt, 1, id);
+            db_util::step_throw(db, delStmt);
+        });
+        res.set_content(json{{"success", true}}.dump(), "application/json");
+    } catch (const std::exception& e) {
+        res.status = 500;
+        res.set_content(json{{"error", e.what()}}.dump(), "application/json");
     }
-    // 删除工单与需求的关联（如有）
-    const char* delReqRel = "DELETE FROM requirement_work_record WHERE work_record_id = ?;";
-    sqlite3_stmt* delReqRelStmt;
-    if (sqlite3_prepare_v2(db, delReqRel, -1, &delReqRelStmt, nullptr) == SQLITE_OK) {
-        sqlite3_bind_int(delReqRelStmt, 1, id);
-        sqlite3_step(delReqRelStmt);
-        sqlite3_finalize(delReqRelStmt);
-    }
-    // 删除工单
-    sqlite3_stmt* delWorkStmt;
-    sqlite3_prepare_v2(db, constants_sql::SQL_DELETE_WORK_RECORD, -1, &delWorkStmt, nullptr);
-    sqlite3_bind_int(delWorkStmt, 1, id);
-    sqlite3_step(delWorkStmt);
-    sqlite3_finalize(delWorkStmt);
-    res.set_content(json{{"success", true}}.dump(), "application/json");
 }
 
 // 上传文件接口重构

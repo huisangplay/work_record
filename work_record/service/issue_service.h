@@ -4,7 +4,7 @@
 #include "../db/db_util.h"
 #include "../dao/issue_record_dao.h"
 #include "../service/requirement_service.h"
-
+extern sqlite3 * db;
 // 获取所有问题接口重构（字段补全、结构规范、异常健壮）
 inline void get_all_issues(const Request& req, Response& res) {
     try {
@@ -106,7 +106,9 @@ inline void delete_issue(const Request& req, Response& res) {
     try {
         auto j = json::parse(req.body);
         int id = j.contains("id") ? j["id"].get<int>() : 0;
-        if (!deleteIssueDao(db, id)) throw std::runtime_error("删除失败");
+        db_util::with_transaction(db, [&]() {
+            if (!deleteIssueDao(db, id)) throw std::runtime_error("删除失败");
+        });
         res.set_content(json{{"success", true}}.dump(), "application/json");
     } catch (const std::exception& e) {
         res.status = 500;

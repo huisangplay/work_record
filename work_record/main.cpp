@@ -14,21 +14,24 @@
 using namespace httplib;
 using json = nlohmann::json;
 
-sqlite3* db;
+constexpr const char * DB_PATH = "db/work_record.db";
+sqlite3 * db;
 
 // ==== 主程序入口 ====
 int main() {
     // 设置控制台输出代码页为 UTF-8
     SetConsoleOutputCP(CP_UTF8);
-    db = openDB();
+    // 打开数据库
+    db = db_util::openDB(DB_PATH);
     if (!db) {
         std::cerr << "database connect failed. please check your profile." << std::endl;
         return 1;
     }
-
+    // 启动服务
     Server svr;
+    // 设置静态文件目录
     svr.set_base_dir("./static");
-
+    // 设置路由
     // [GET] 获取工作记录
     svr.Get("/api/work_records", get_all_work_records);
 
