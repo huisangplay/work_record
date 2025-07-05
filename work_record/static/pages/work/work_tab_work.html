@@ -439,6 +439,8 @@ $('#newRecord').off('click').on('click', function(){
   renderUploadFileList();
   $modal.find('#uploadFileList').empty();
   $modal.modal('show');
+  renderUploadFileList(); // 重新渲染空列表
+  $modal.find('#uploadFileList').empty();
 });
 // 文件上传队列（仅新建用）
 var uploadFiles = [];

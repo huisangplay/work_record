@@ -7,7 +7,7 @@ function renderStats() {
   $('#statsCards').html('');
 
   // 新增：工单统计
-  axios.get('http://127.0.0.1:1994/ticket/get_ticket_count_statistics_by_employee_code?employee_code=500958').then(res => {
+  axios.get('http://10.11.55.89:1994/ticket/get_ticket_count_statistics_by_employee_code?employee_code=500958').then(res => {
     const d = res.data || {};
     $('#ticketStatsCards').html(`
       <div class="col-md-3 mb-3">

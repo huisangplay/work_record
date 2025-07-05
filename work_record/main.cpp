@@ -6,11 +6,13 @@
 #include "service/employee_service.h"
 #include "util/file_util.h"
 #include <iostream>
-#include "third_party/httplib.h"
-#include "third_party/json.hpp"
-#include "db/sqlite3.h"
+#include <httplib/httplib.h>
+#include <nlohmann/json.hpp>
+#include <sqlite3/sqlite3.h>
 #include "service/issue_service.h"
 #include "service/dict_service.h"
+#include "util/db_util.h"
+#include "service/requirement_service.h"
 using namespace httplib;
 using json = nlohmann::json;
 
