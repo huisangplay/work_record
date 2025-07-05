@@ -68,8 +68,10 @@ function loadSourceTypeOptions() {
 function loadRequirementFilterOptions() {
   axios.get('/api/requirement_records').then(res => {
     let html = '<option value="">全部需求</option>';
-    const records = res.data.records || res.data; // 兼容分页结构和老结构
-    for(const r of records) html += `<option value="${r.id}">${r.title}</option>`;
+    const records = res.data.data.records ;
+    if (Array.isArray(records)) {
+      for(const r of records) html += `<option value="${r.id}">${r.title}</option>`;
+    }
     $('#requirementFilter').html(html);
   });
 }
@@ -87,7 +89,11 @@ function loadWorkRecords() {
   axios.get('/api/work_records', {
     params: { scope: workScope, page: workPage, page_size: workPageSize, status_id: workStatus, affected_id: workAffected, source_type_id: workSourceType, requirement_id: workRequirement, work_type_id: workType }
   }).then(res => {
-    const { records, total, page, page_size } = res.data;
+    const responseData = res.data.data || res.data;
+    const records = responseData.records || [];
+    const total = responseData.total || records.length;
+    const page = responseData.page || workPage;
+    const page_size = responseData.page_size || workPageSize;
     // 表头顺序：序号、内容、类型、状态、来源、影响、关联需求、完成人、完成时间、文件、操作
     let html = `<table class="table table-hover align-middle"><thead><tr>
       <th style="width: 60px">序号</th><th style="width: 200px">内容</th><th style="width: 80px">类型</th><th style="width: 80px">状态</th><th style="width: 80px">来源</th><th style="width: 80px">影响</th><th style="width: 120px">关联需求</th><th style="width: 80px">完成人</th><th style="width: 100px">完成时间</th><th style="width: 320px">文件</th><th style="width: 120px">操作</th></tr></thead><tbody>`;
@@ -213,8 +219,9 @@ function loadWorkRecords() {
   });
   $('#workTableWrap').off('click', '.btn-edit').on('click', '.btn-edit', function(){
     const id = $(this).data('id');
-    axios.get('/api/work_records', {params: {id}}).then(res => {
-      const r = res.data.records && res.data.records.length ? res.data.records[0] : null;
+    axios.get('/api/work_record', {params: {id}}).then(res => {
+      const r = res.data.data;
+      console.log('工作记录数据:', r);
       if (!r) { showToast('未找到该记录', 'danger'); return; }
       const $modal = $('#newRecordModal');
       const formEl = $modal.find('#newRecordForm')[0];
@@ -286,30 +293,7 @@ function loadWorkRecords() {
         renderUploadFileList_edit($modal);
         this.value = '';
       });
-      // 绑定保存按钮
-      $('#submitNewRecord').off('click').on('click', function(){
-        const $form = $('#newRecordForm')[0];
-        if(!$form.checkValidity()){ $form.reportValidity(); return; }
-        const formData = new FormData($form);
-        let uploadFiles = $modal.data('uploadFiles') || [];
-        for(let f of uploadFiles) formData.append('files', f);
-        let deleteFileIds = $modal.data('deleteFileIds') || [];
-        if(deleteFileIds.length) formData.append('delete_file_ids', deleteFileIds.join(','));
-        // 新增：如果 id 为空，删除 id 字段，避免传递空 id 给后端
-        if (!formData.get('id')) formData.delete('id');
-        const isEdit = formData.get('id');
-        const url = isEdit ? '/api/update_work_record' : '/api/get_work_records';
-        axios.post(url, formData)
-          .then(()=>{
-            showSwalToast('success', isEdit ? '修改成功' : '新建成功', 1500);
-            $('#newRecordModal').modal('hide');
-            loadWorkRecords();
-            uploadFiles = [];
-          })
-          .catch(err=>{
-            showSwalToast('error', err?.response?.data?.error||(isEdit?'修改失败':'新建失败'), 2000);
-          });
-      });
+      // 注意：提交按钮的事件处理器已经在全局绑定，这里不需要重复绑定
       // 监听部门下拉change事件
       $modal.find('[name=department_id]').off('change').on('change', function() {
         const deptId = $(this).val();
@@ -387,8 +371,10 @@ function loadDictToSelect(table, $select) {
 function loadRequirementOptions($select) {
   axios.get('/api/requirement_records').then(res=>{
     let html = '<option value="">请选择</option>';
-    const records = res.data.records || res.data; // 兼容分页结构和老结构
-    for(const r of records) html += `<option value="${r.id}">${r.title}</option>`;
+    const records = res.data.data.records; 
+    if (Array.isArray(records)) {
+      for(const r of records) html += `<option value="${r.id}">${r.title}</option>`;
+    }
     $select.html(html);
   });
 }
@@ -418,11 +404,28 @@ $('#newRecord').off('click').on('click', function(){
   const formEl = $modal.find('#newRecordForm')[0];
   if (formEl && typeof formEl.reset === 'function') formEl.reset();
   $modal.find('.modal-title').text('新建工作记录');
+  
+  // ✅ 完全清除模态框缓存
+  $modal.removeData('uploadFiles');
+  $modal.removeData('deleteFileIds');
+  $modal.removeData('editFileList');
+
+  // ✅ 清空全局变量
+  uploadFiles = [];
+
+  // ✅ 清空上传文件列表区域
+  $modal.find('#uploadFileList').empty();
+
+  // ✅ 渲染空文件列表（确保前端界面干净）
+  renderUploadFileList(); // 只适用于新建模式
+  
   // 设置完成时间为当前本地时间
   const now = new Date();
   const pad = n => n<10?'0'+n:n;
   const local = now.getFullYear() + '-' + pad(now.getMonth()+1) + '-' + pad(now.getDate()) + 'T' + pad(now.getHours()) + ':' + pad(now.getMinutes());
   $modal.find('[name=completion_time]').val(local);
+  
+  // 加载下拉选项
   loadRequirementOptions($modal.find('[name=requirement_id]'));
   loadDictToSelect('work_type_dict', $modal.find('[name=work_type_id]'));
   loadDictToSelect('affected_type_dict', $modal.find('[name=affected_id]'));
@@ -430,25 +433,37 @@ $('#newRecord').off('click').on('click', function(){
   loadDictToSelect('work_record_status_dict', $modal.find('[name=work_record_status_id]'));
   loadDepartmentOptions($modal.find('[name=department_id]'), 0);
   $modal.find('[name=employee_id]').html('<option value="">请先选择部门</option>');
+  
   // 监听部门下拉change事件
   $modal.find('[name=department_id]').off('change').on('change', function() {
     const deptId = $(this).val();
     loadEmployeeOptionsByDept($modal.find('[name=employee_id]'), deptId, null);
   });
-  uploadFiles = [];
+  
+  // 清空文件列表
+  $modal.find('#uploadFileList').empty();
   renderUploadFileList();
-  $modal.find('#uploadFileList').empty();
+  
   $modal.modal('show');
-  renderUploadFileList(); // 重新渲染空列表
-  $modal.find('#uploadFileList').empty();
 });
 // 文件上传队列（仅新建用）
 var uploadFiles = [];
 $('#newRecordModal').off('change', '#newRecordFileInput').on('change', '#newRecordFileInput', function(){
-  if($('#newRecordModal .modal-title').text().indexOf('新建')!==-1){
+  const $modal = $('#newRecordModal');
+  const isNewRecord = $modal.find('.modal-title').text().indexOf('新建') !== -1;
+  
+  if (isNewRecord) {
+    // 新建模式：添加到全局变量
     for(let f of this.files) uploadFiles.push(f);
     renderUploadFileList();
+  } else {
+    // 编辑模式：添加到模态框数据
+    let modalUploadFiles = $modal.data('uploadFiles') || [];
+    for(let f of this.files) modalUploadFiles.push(f);
+    $modal.data('uploadFiles', modalUploadFiles);
+    renderUploadFileList_edit($modal);
   }
+  
   this.value = '';
 });
 function renderUploadFileList() {
@@ -459,28 +474,79 @@ function renderUploadFileList() {
   });
 }
 $('#uploadFileList').off('click', '.file-del-x').on('click', '.file-del-x', function(){
-  if($('#newRecordModal .modal-title').text().indexOf('新建')!==-1){
+  const $modal = $('#newRecordModal');
+  const isNewRecord = $modal.find('.modal-title').text().indexOf('新建') !== -1;
+  
+  if (isNewRecord) {
+    // 新建模式：从全局变量删除
     const idx = $(this).data('idx');
-    uploadFiles.splice(idx,1);
+    uploadFiles.splice(idx, 1);
     renderUploadFileList();
+  } else {
+    // 编辑模式：处理已存在文件和新上传文件
+    const fileId = $(this).data('fileid');
+    const idx = $(this).data('idx');
+    
+    if (fileId) {
+      // 删除已存在的文件
+      let deleteFileIds = $modal.data('deleteFileIds') || [];
+      deleteFileIds.push(fileId);
+      $modal.data('deleteFileIds', deleteFileIds);
+      
+      // 从编辑文件列表中移除
+      let editFileList = $modal.data('editFileList') || [];
+      editFileList = editFileList.filter(f => f.id != fileId);
+      $modal.data('editFileList', editFileList);
+    } else if (idx !== undefined) {
+      // 删除新上传的文件
+      let modalUploadFiles = $modal.data('uploadFiles') || [];
+      modalUploadFiles.splice(idx, 1);
+      $modal.data('uploadFiles', modalUploadFiles);
+    }
+    
+    renderUploadFileList_edit($modal);
   }
 });
-// 新增/修改保存时区分接口
+// 全局提交按钮事件处理器
 $('#submitNewRecord').off('click').on('click', function(){
   const $form = $('#newRecordForm')[0];
   if(!$form.checkValidity()){ $form.reportValidity(); return; }
   const formData = new FormData($form);
-  for(let f of uploadFiles) formData.append('files', f);
-  // 新增：如果 id 为空，删除 id 字段，避免传递空 id 给后端
-  if (!formData.get('id')) formData.delete('id');
-  const isEdit = formData.get('id');
+
+  // 修正 isEdit 判断逻辑：只有 id 存在且非空且为数字时才视为编辑
+  let idVal = formData.get('id');
+  const isEdit = idVal && !isNaN(Number(idVal)) && Number(idVal) > 0;
+  const $modal = $('#newRecordModal');
+
+  if (isEdit) {
+    // 编辑模式：使用模态框的数据
+    let uploadFiles = $modal.data('uploadFiles') || [];
+    for(let f of uploadFiles) formData.append('files', f);
+    let deleteFileIds = $modal.data('deleteFileIds') || [];
+    if(deleteFileIds.length) formData.append('delete_file_ids', deleteFileIds.join(','));
+  } else {
+    // 新建模式：使用全局变量
+    for(let f of uploadFiles) formData.append('files', f);
+  }
+
+  // 新增：如果 id 为空、非数字或 <=0，删除 id 字段，避免传递无效 id 给后端
+  if (!isEdit) formData.delete('id');
+
   const url = isEdit ? '/api/update_work_record' : '/api/get_work_records';
   axios.post(url, formData)
     .then(()=>{
       showSwalToast('success', isEdit ? '修改成功' : '新建成功', 1500);
       $('#newRecordModal').modal('hide');
       loadWorkRecords();
-      uploadFiles = [];
+      // 清理缓存
+      if (isEdit) {
+        $modal.removeData('uploadFiles');
+        $modal.removeData('deleteFileIds');
+        $modal.removeData('editFileList');
+      } else {
+        uploadFiles = [];
+        renderUploadFileList();
+      }
     })
     .catch(err=>{
       showSwalToast('error', err?.response?.data?.error||(isEdit?'修改失败':'新建失败'), 2000);

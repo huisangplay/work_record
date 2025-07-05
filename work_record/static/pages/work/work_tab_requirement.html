@@ -75,7 +75,11 @@ function renderRequirements() {
       affected_id: requirementAffected
     }
   }).then(res => {
-    const { records, total, page, page_size } = res.data;
+    const responseData = res.data.data || res.data;
+    const records = responseData.records || [];
+    const total = responseData.total || records.length;
+    const page = responseData.page || requirementPage;
+    const page_size = responseData.page_size || requirementPageSize;
     let html = `<table class="table table-hover align-middle"><thead><tr>
       <th style="width: 200px">需求名称</th><th style="width: 100px">提出人</th><th style="width: 80px">状态</th><th style="width: 100px">更新时间</th><th style="width: 80px">来源</th><th style="width: 80px">影响</th><th style="width: 120px">操作</th></tr></thead><tbody>`;
     if (!records || records.length === 0) {
@@ -152,7 +156,7 @@ if (!document.getElementById('requirementModal')) {
 $(document).on('click', '.btn-edit', function() {
   const id = $(this).data('id');
   axios.get('/api/requirement_records').then(res => {
-    const records = res.data.records || res.data;
+    const records = res.data.data.records;
     const item = records.find(x => x.id == id);
     if (!item) return;
     const $form = $('#requirementForm');
@@ -217,7 +221,7 @@ $(document).off('click', '.btn-del').on('click', '.btn-del', function() {
           renderRequirements();
         } else {
           return response.json().then(data => {
-            throw new Error(data.error || '删除失败');
+            throw new Error(data.message || '删除失败');
           });
         }
       }).catch(err => {
@@ -263,7 +267,7 @@ $('#btnSaveRequirement').on('click', function() {
     } else {
       return response.json().then(data => {
         // 直接显示后端返回的 error 字段内容
-        throw new Error(data.error || (isEdit ? '修改失败' : '新建失败'));
+        throw new Error(data.message || (isEdit ? '修改失败' : '新建失败'));
       });
     }
   }).catch(err => {

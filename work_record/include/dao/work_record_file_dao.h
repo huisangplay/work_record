@@ -1,6 +1,8 @@
 #pragma once
 #include <sqlite3/sqlite3.h>
 
-bool insertWorkFileRel(sqlite3* db, int workId, int fileId) ;
+#include "util/dao_util.h"
 
- bool deleteWorkFileRelByWork(sqlite3* db, int workId) ;
+dao_util::DaoResult insertWorkFileRel(sqlite3 *db, int workId, int fileId);
+
+dao_util::DaoResult deleteWorkFileRelByWork(sqlite3 *db, int workId);

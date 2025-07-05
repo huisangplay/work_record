@@ -610,7 +610,7 @@
         $('#dictStatusClass').val(item.status_class || 'bg-primary');
       } else if (currentTable === 'requirement_status_dict') {
         $('#dictName').closest('.mb-3').show();
-        $('#dictComment').closest('.mb-3').hide();
+        $('#dictComment').closest('.mb-3').show();
         $('#employeeNameField').hide();
         $('#employeeNumberField').hide();
         $('#departmentNameField').hide();
@@ -619,7 +619,7 @@
         $('#dictStatusClass').val(item.requirement_status_class || 'bg-primary');
       } else if (currentTable === 'issue_progress_dict') {
         $('#dictName').closest('.mb-3').show();
-        $('#dictComment').closest('.mb-3').hide();
+        $('#dictComment').closest('.mb-3').show();
         $('#employeeNameField').hide();
         $('#employeeNumberField').hide();
         $('#departmentNameField').hide();
@@ -671,7 +671,7 @@
                 showToast('success', '删除成功');
                 loadDictData(currentTable);
               } else {
-                showToast('error', res.data.error || '删除失败');
+                showToast('error', res.data.message || '删除失败');
               }
             })
             .catch(err => {
@@ -742,7 +742,7 @@
             $('#dictModal').modal('hide');
             loadDictData(currentTable);
           } else {
-            showToast('error', res.data.error || '操作失败');
+            showToast('error', res.data.message || '操作失败');
           }
         })
         .catch(err => {

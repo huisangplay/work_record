@@ -3,11 +3,13 @@
 #include <sqlite3/sqlite3.h>
 #include <vector>
 
+#include "util/dao_util.h"
 
-std::vector<RequirementStatusDict> queryAllRequirementStatusDict(sqlite3* db) ;
 
-bool insertRequirementStatusDict(sqlite3* db, RequirementStatusDict& item) ;
+dao_util::DaoResult queryAllRequirementStatusDict(sqlite3* db, std::vector<RequirementStatusDict>& list) ;
 
-bool updateRequirementStatusDict(sqlite3* db, const RequirementStatusDict& item) ;
+dao_util::DaoResult insertRequirementStatusDict(sqlite3* db, RequirementStatusDict& item) ;
 
-bool deleteRequirementStatusDict(sqlite3* db, int id) ;
+dao_util::DaoResult updateRequirementStatusDict(sqlite3* db, const RequirementStatusDict& item) ;
+
+dao_util::DaoResult deleteRequirementStatusDict(sqlite3* db, int64_t id) ;

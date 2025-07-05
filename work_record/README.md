@@ -4,16 +4,52 @@
 
 本系统为 C++/SQLite/HTML 前后端一体化的工作记录管理平台，支持工作记录、需求进展、高频问题、统计分析、部门与员工管理、字典维护等功能，适用于研发、项目管理等场景。
 
+**技术栈：**
+- **后端**：C++23 + SQLite3 + httplib + nlohmann/json + spdlog
+- **前端**：HTML5 + CSS3 + JavaScript + Bootstrap 5 + Axios
+- **构建工具**：CMake 3.16+
+- **数据库**：SQLite3
+
 ---
 
 ## 主要功能模块
 
-- **工作记录**：登记、查询、筛选、导出各类工作任务。
+- **工作记录**：登记、查询、筛选、导出各类工作任务，支持文件上传和管理。
 - **需求进展**：需求全流程跟踪，支持来源、影响等多维度筛选。
 - **高频问题**：问题登记、进展跟踪、责任人管理。
 - **统计分析**：多维度工单统计，支持按员工、时间等维度分析。
 - **部门与员工管理**：支持部门、员工的增删改查及关联。
 - **字典维护**：支持各类字典（类型、状态、来源、影响等）自定义维护。
+
+---
+
+## 项目结构
+
+```
+work_record/
+├── build_cmake/           # CMake构建输出目录
+├── include/              # 头文件目录
+│   ├── constants/        # 常量定义
+│   ├── dao/             # 数据访问层
+│   ├── model/           # 数据模型
+│   ├── service/         # 业务逻辑层
+│   └── util/            # 工具类
+├── src/                 # 源代码目录
+│   ├── dao/            # 数据访问层实现
+│   ├── service/        # 业务逻辑层实现
+│   └── util/           # 工具类实现
+├── static/             # 前端静态文件
+│   └── pages/work/     # 工作页面
+├── third_party/        # 第三方库
+│   ├── httplib/        # HTTP服务器库
+│   ├── nlohmann/       # JSON库
+│   ├── spdlog/         # 日志库
+│   └── sqlite3/        # SQLite数据库
+├── db/                 # 数据库文件
+├── CMakeLists.txt      # CMake构建配置
+├── build_cmake.bat     # Windows一键构建脚本
+└── main.cpp           # 主程序入口
+```
 
 ---
 
@@ -61,22 +97,41 @@
 
 ## 编译与运行
 
+### 环境要求
+
+- **编译器**：支持 C++23 的编译器（如 GCC 11+, Clang 14+, MSVC 2022）
+- **CMake**：3.16 或更高版本
+- **操作系统**：Windows 10+, Linux, macOS
+
 ### Windows 一键编译
 
 ```bash
-./build.bat
+# 使用提供的批处理脚本
+./build_cmake.bat
 ```
 
 ### 手动编译
 
 ```bash
-g++ -std=c++20 -o myapp.exe main.cpp db/sqlite3.c -lWs2_32 -lpthread
+# 创建构建目录
+mkdir build_cmake
+cd build_cmake
+
+# 配置项目
+cmake .. -G "MinGW Makefiles" -DCMAKE_BUILD_TYPE=Release
+
+# 编译项目
+cmake --build . --config Release
 ```
 
 ### 运行
 
 ```bash
-./myapp.exe
+# 进入构建目录
+cd build_cmake/bin
+
+# 运行程序
+./work_record.exe
 # 默认服务地址：http://localhost:8080
 ```
 
@@ -94,91 +149,169 @@ sqlite3 db/work_record.db < update_database.sql
 
 ---
 
-## 主要接口文档
+## API 接口文档
+
+### 响应格式
+
+所有API返回标准JSON格式：
+
+**成功响应：**
+```json
+{
+  "success": true,
+  "data": { ... },
+  "message": "操作成功"
+}
+```
+
+**错误响应：**
+```json
+{
+  "success": false,
+  "message": "错误信息"
+}
+```
 
 ### 工作记录 Work Records
-- **GET /api/work_records** 查询工作记录，支持分页、筛选。
-- **POST /api/get_work_records** 新建工作记录（含文件上传）。
-- **POST /api/update_work_record** 修改工作记录。
-- **DELETE /api/work_record/{id}** 删除工作记录。
-- **POST /api/work_record/{id}/upload** 上传文件到指定工单。
-- **GET /api/download** 下载文件。
-- **DELETE /api/file/{id}** 删除单个文件。
+- **GET /api/work_records** 查询工作记录，支持分页、筛选
+- **GET /api/work_record** 根据ID获取单条工作记录
+- **POST /api/get_work_records** 新建工作记录（含文件上传）
+- **POST /api/update_work_record** 修改工作记录
+- **DELETE /api/work_record/{id}** 删除工作记录
+- **POST /api/work_record/{id}/upload** 上传文件到指定工单
+- **GET /api/download** 下载文件
+- **DELETE /api/file/{id}** 删除单个文件
 
 ### 需求进展 Requirement Records
-- **GET /api/requirement_records** 查询需求记录，支持分页、筛选。
-- **POST /api/requirement_record** 新增/修改需求记录。
-- **DELETE /api/delete_requirement_record?id=xxx** 删除需求记录。
+- **GET /api/requirement_records** 查询需求记录，支持分页、筛选
+- **POST /api/requirement_record** 新增/修改需求记录
+- **DELETE /api/delete_requirement_record?id=xxx** 删除需求记录
 
 ### 高频问题 Issue Records
-- **GET /api/issues** 查询问题记录，支持分页、筛选。
-- **POST /api/add_issue** 新建问题。
-- **POST /api/update_issue** 修改问题。
-- **POST /api/delete_issue** 删除问题。
+- **GET /api/issues** 查询问题记录，支持分页、筛选
+- **POST /api/add_issue** 新建问题
+- **POST /api/update_issue** 修改问题
+- **POST /api/delete_issue** 删除问题
 
 ### 字典与基础数据
-- **GET /api/dict?table=xxx** 查询字典表（如 `work_type_dict`、`affected_type_dict` 等）。
-- **POST /api/dict** 新增字典项。
-- **PUT /api/dict** 修改字典项。
-- **DELETE /api/dict** 删除字典项。
+- **GET /api/dict?table=xxx** 查询字典表（如 `work_type_dict`、`affected_type_dict` 等）
+- **POST /api/dict** 新增字典项
+- **PUT /api/dict** 修改字典项
+- **DELETE /api/dict** 删除字典项
 
 ### 部门与员工
-- **GET /api/departments** 查询所有部门。
-- **POST /api/department** 新增部门。
-- **POST /api/update_department** 修改部门。
-- **DELETE /api/department** 删除部门。
-- **GET /api/employees** 查询所有员工，支持 `department_id` 筛选。
-- **POST /api/employee** 新增员工。
-- **POST /api/update_employee** 修改员工。
-- **DELETE /api/employee** 删除员工。
+- **GET /api/departments** 查询所有部门
+- **POST /api/department** 新增部门
+- **POST /api/update_department** 修改部门
+- **DELETE /api/department** 删除部门
+- **GET /api/employees** 查询所有员工，支持 `department_id` 筛选
+- **POST /api/employee** 新增员工
+- **POST /api/update_employee** 修改员工
+- **DELETE /api/employee** 删除员工
 
-### 其它
-- **GET /api/work_record_status_dict** 获取工单状态字典。
-- **GET /api/requirement_status_dict** 获取需求状态字典。
-- **GET /api/issue_progress_dict** 获取问题进度字典。
-
-**所有接口返回均为标准JSON，错误时返回 `{ error: '错误信息' }`，成功时返回 `{ success: true }` 或数据对象。**
-
-如需详细字段说明，请查阅 `db/work_record_design.md` 或源码。
+### 状态字典
+- **GET /api/work_record_status_dict** 获取工单状态字典
+- **GET /api/requirement_status_dict** 获取需求状态字典
+- **GET /api/issue_progress_dict** 获取问题进度字典
 
 ---
 
-## 前端入口与使用
+## 前端使用指南
 
-- 访问 `static/pages/work_record.html` 即可进入系统主界面。
-- 支持多Tab切换，功能涵盖工作记录、需求进展、问题、统计等。
-- 右下角"字典维护"按钮可进入字典管理页面。
+### 主界面
+- 访问 `http://localhost:8080/pages/work/work_record.html` 进入系统主界面
+- 支持多Tab切换，功能涵盖工作记录、需求进展、问题、统计等
+- 右下角"字典维护"按钮可进入字典管理页面
+
+### 页面功能
+- **工作记录页** (`work_tab_work.html`)：工单管理、文件上传、状态跟踪
+- **需求进展页** (`work_tab_requirement.html`)：需求跟踪、状态管理
+- **问题管理页** (`work_tab_issue.html`)：问题登记、进度跟踪
+- **统计分析页** (`work_tab_stats.html`)：多维度数据统计
+- **字典维护页** (`dict_maintenance.html`)：所有字典的统一管理
+
+### 字典维护
+- 通过 `dict_maintenance.html` 页面可维护所有字典（类型、状态、来源、影响、部门、员工等）
+- 支持增删改查、字段自适应、下拉选择等，界面美观
+- 支持实时预览和批量操作
 
 ---
 
-## 字典维护
+## 日志系统
 
-- 通过 `dict_maintenance.html` 页面可维护所有字典（类型、状态、来源、影响、部门、员工等）。
-- 支持增删改查、字段自适应、下拉选择等，界面美观。
+系统使用 spdlog 日志库，日志文件位置：
+- **应用日志**：`logs/app.log`
+- **日志级别**：INFO 及以上
+- **日志格式**：时间戳 + 级别 + 消息内容
+
+---
+
+## 文件管理
+
+- **上传目录**：`upload/` 按年份和项目分类存储
+- **文件命名**：自动生成唯一文件名，保留原始扩展名
+- **文件关联**：通过 `work_record_files` 表关联工单和文件
 
 ---
 
 ## 设计与扩展
 
-- 详细设计文档见 `db/work_record_design.md`。
-- 代码分层清晰，便于二次开发和功能扩展。
-- 支持自定义字典、灵活扩展业务字段。
+- 详细设计文档见 `db/work_record_design.md`
+- 代码分层清晰，便于二次开发和功能扩展
+- 支持自定义字典、灵活扩展业务字段
+- 采用 DAO-Service 分层架构，便于维护
 
 ---
 
 ## 常见问题
 
-- **编译失败**：请确保已安装 g++、sqlite3 等依赖。
-- **端口冲突**：如8080端口被占用，可在 `main.cpp` 修改监听端口。
-- **数据库升级**：升级脚本如遇外键约束问题，请先备份数据。
+### 编译问题
+- **CMake 配置失败**：确保 CMake 版本 >= 3.16
+- **编译器不支持 C++23**：升级到最新版本的 GCC/Clang/MSVC
+- **依赖库缺失**：所有第三方库已包含在 `third_party/` 目录中
+
+### 运行问题
+- **端口冲突**：如8080端口被占用，可在 `main.cpp` 修改监听端口
+- **数据库连接失败**：检查 `db/` 目录权限和数据库文件完整性
+- **文件上传失败**：检查 `upload/` 目录权限
+
+### 数据问题
+- **数据库升级**：升级脚本如遇外键约束问题，请先备份数据
+- **字典数据丢失**：可通过 `dict_maintenance.html` 重新维护
+
+---
+
+## 开发指南
+
+### 代码结构
+- **DAO层**：数据访问层，负责数据库操作
+- **Service层**：业务逻辑层，处理业务规则
+- **Util层**：工具类，提供通用功能
+- **Model层**：数据模型，定义数据结构
+
+### 添加新功能
+1. 在 `include/model/` 中定义数据模型
+2. 在 `include/dao/` 中定义数据访问接口
+3. 在 `src/dao/` 中实现数据访问逻辑
+4. 在 `include/service/` 中定义业务接口
+5. 在 `src/service/` 中实现业务逻辑
+6. 在 `main.cpp` 中添加API路由
+7. 在 `static/pages/work/` 中添加前端页面
 
 ---
 
 ## 贡献与维护
 
-- 欢迎提交 issue 和 PR，完善功能与文档。
-- 代码风格统一，建议使用 C++17 及以上标准。
+- 欢迎提交 issue 和 PR，完善功能与文档
+- 代码风格统一，建议使用 C++23 标准
+- 提交前请运行测试确保功能正常
 
 ---
 
-如需详细API、字段说明、前端交互细节等，请查阅 `DEPARTMENT_EMPLOYEE_README.md` 和各页面源码。
+## 许可证
+
+本项目采用 MIT 许可证，详见 LICENSE 文件。
+
+---
+
+如需详细API、字段说明、前端交互细节等，请查阅 `db/work_record_design.md` 和各页面源码。

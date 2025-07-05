@@ -3,10 +3,12 @@
 #include <sqlite3/sqlite3.h>
 #include <vector>
 
-std::vector<IssueProgressDict> queryAllIssueProgressDict(sqlite3* db) ;
+#include "util/dao_util.h"
 
-bool insertIssueProgressDict(sqlite3* db, IssueProgressDict& item) ;
+dao_util::DaoResult queryAllIssueProgressDict(sqlite3* db, std::vector<IssueProgressDict>& list) ;
 
-bool updateIssueProgressDict(sqlite3* db, const IssueProgressDict& item) ;
+dao_util::DaoResult insertIssueProgressDict(sqlite3* db, IssueProgressDict& item) ;
 
-bool deleteIssueProgressDict(sqlite3* db, int id) ;
+dao_util::DaoResult updateIssueProgressDict(sqlite3* db, const IssueProgressDict& item) ;
+
+dao_util::DaoResult deleteIssueProgressDict(sqlite3* db, int64_t id) ;

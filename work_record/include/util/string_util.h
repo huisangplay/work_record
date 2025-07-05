@@ -5,7 +5,7 @@
 #include <windows.h>
 #endif
 
-std::wstring utf8string2wstring(const std::string& str) {
+inline std::wstring utf8string2wstring(const std::string& str) {
 #ifdef _WIN32
     if (str.empty()) return L"";
     int size_needed = MultiByteToWideChar(CP_UTF8, 0, str.c_str(), (int)str.size(), NULL, 0);

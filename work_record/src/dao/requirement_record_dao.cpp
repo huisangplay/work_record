@@ -1,16 +1,19 @@
-#include"dao/requirement_record_dao.h"
-#include <string>
-#include <iostream>
-#include <numeric>
+#include "dao/requirement_record_dao.h"
+#include "util/dao_util.h"
 #include "constants/constants_sql.h"
-#include "util/db_util.h"
-using namespace db_util;
+#include <string>
+#include <numeric>
+
+using namespace dao_util;
+
 // 查询所有需求记录
-std::vector<RequirementRecord> queryAllRequirementRecordsDao(sqlite3* db) {
-    std::vector<RequirementRecord> records;
+DaoResult queryAllRequirementRecords(sqlite3* db, std::vector<RequirementRecord>& records) {
+    records.clear();
     sqlite3_stmt* stmt = nullptr;
-    db_util::prepare_throw(db, constants_sql::SQL_SELECT_ALL_REQUIREMENT_RECORD, &stmt);
-    db_util::exec_select(db, stmt, [&](sqlite3_stmt* s){
+    
+    DAO_SAFE_PREPARE(db, constants_sql::SQL_SELECT_ALL_REQUIREMENT_RECORD, stmt, "queryAllRequirementRecords");
+    
+    DAO_SAFE_EXEC_SELECT(db, stmt, [&](sqlite3_stmt* s) {
         RequirementRecord r;
         r.id = sqlite3_column_int(s, 0);
         r.title = reinterpret_cast<const char*>(sqlite3_column_text(s, 1));
@@ -27,17 +30,21 @@ std::vector<RequirementRecord> queryAllRequirementRecordsDao(sqlite3* db) {
         r.employee_name = sqlite3_column_type(s, 12) == SQLITE_NULL ? "" : reinterpret_cast<const char*>(sqlite3_column_text(s, 12));
         r.department_id = sqlite3_column_type(s, 13) == SQLITE_NULL ? 0 : sqlite3_column_int(s, 13);
         records.push_back(r);
-    });
-    return records;
+    }, "queryAllRequirementRecords");
+    
+    return DaoResult::SUCCESS;
 }
 
 // 根据ID获取RequirementRecord
-bool getRequirementById(sqlite3* db, int id, RequirementRecord& record) {
+DaoResult getRequirementById(sqlite3* db, int64_t id, RequirementRecord& record) {
     sqlite3_stmt* stmt = nullptr;
-    db_util::prepare_throw(db, constants_sql::SQL_SELECT_REQUIREMENT_BY_ID, &stmt);
-    sqlite3_bind_int(stmt, 1, id);
+    
+    DAO_SAFE_PREPARE(db, constants_sql::SQL_SELECT_REQUIREMENT_BY_ID, stmt, "getRequirementById");
+    
+    sqlite3_bind_int64(stmt, 1, id);
+    
     bool found = false;
-    db_util::exec_select(db, stmt, [&](sqlite3_stmt* s){
+    auto result = exec_select_safe(db, stmt, [&](sqlite3_stmt* s) {
         record.id = sqlite3_column_int(s, 0);
         record.title = reinterpret_cast<const char*>(sqlite3_column_text(s, 1));
         record.requirement_status_id = sqlite3_column_int(s, 2);
@@ -48,60 +55,86 @@ bool getRequirementById(sqlite3* db, int id, RequirementRecord& record) {
         record.create_time = reinterpret_cast<const char*>(sqlite3_column_text(s, 7));
         record.update_time = reinterpret_cast<const char*>(sqlite3_column_text(s, 8));
         found = true;
-    });
-    return found;
+    }, "getRequirementById");
+    
+    if (result != DaoResult::SUCCESS) {
+        return DaoResult::FAILED;
+    }
+    
+    return found ? DaoResult::SUCCESS : DaoResult::NOT_FOUND;
 }
 
-// requirement_dao.h 内联实现，解决链接错误
-bool insertRequirementRecord(sqlite3* db, const RequirementRecord& record, int& newId) {
+// 插入需求记录
+DaoResult insertRequirementRecord(sqlite3* db, const RequirementRecord& record, int64_t& newId) {
     sqlite3_stmt* stmt = nullptr;
-    db_util::prepare_throw(db, constants_sql::SQL_INSERT_REQUIREMENT_RECORD, &stmt);
+    
+    DAO_SAFE_PREPARE(db, constants_sql::SQL_INSERT_REQUIREMENT_RECORD, stmt, "insertRequirementRecord");
+    
     sqlite3_bind_text(stmt, 1, record.title.c_str(), -1, SQLITE_TRANSIENT);
-    sqlite3_bind_int(stmt, 2, record.requirement_status_id);
-    sqlite3_bind_int(stmt, 3, record.source_type_id);
-    sqlite3_bind_int(stmt, 4, record.affected_id);
-    sqlite3_bind_int(stmt, 5, record.employee_id);
-    db_util::exec_stmt_done(db, stmt);
-    newId = (int)sqlite3_last_insert_rowid(db);
-    return true;
+    sqlite3_bind_int64(stmt, 2, record.requirement_status_id);
+    sqlite3_bind_int64(stmt, 3, record.source_type_id);
+    sqlite3_bind_int64(stmt, 4, record.affected_id);
+    sqlite3_bind_int64(stmt, 5, record.employee_id);
+    
+    DAO_SAFE_EXEC_DONE(db, stmt, "insertRequirementRecord");
+    
+    newId = static_cast<int>(sqlite3_last_insert_rowid(db));
+    return DaoResult::SUCCESS;
 }
 
-void updateRequirementRecord(sqlite3* db, const RequirementRecord& record) {
+// 更新需求记录
+DaoResult updateRequirementRecord(sqlite3* db, const RequirementRecord& record) {
     sqlite3_stmt* stmt = nullptr;
-    db_util::prepare_throw(db, constants_sql::SQL_UPDATE_REQUIREMENT_RECORD, &stmt);
+    
+    DAO_SAFE_PREPARE(db, constants_sql::SQL_UPDATE_REQUIREMENT_RECORD, stmt, "updateRequirementRecord");
+    
     sqlite3_bind_text(stmt, 1, record.title.c_str(), -1, SQLITE_TRANSIENT);
-    sqlite3_bind_int(stmt, 2, record.requirement_status_id);
-    sqlite3_bind_int(stmt, 3, record.source_type_id);
-    sqlite3_bind_int(stmt, 4, record.affected_id);
-    sqlite3_bind_int(stmt, 5, record.employee_id);
-    sqlite3_bind_int(stmt, 6, record.id);
-    db_util::exec_stmt_done(db, stmt);
+    sqlite3_bind_int64(stmt, 2, record.requirement_status_id);
+    sqlite3_bind_int64(stmt, 3, record.source_type_id);
+    sqlite3_bind_int64(stmt, 4, record.affected_id);
+    sqlite3_bind_int64(stmt, 5, record.employee_id);
+    sqlite3_bind_int64(stmt, 6, record.id);
+    
+    DAO_SAFE_EXEC_DONE(db, stmt, "updateRequirementRecord");
+    
+    return DaoResult::SUCCESS;
 }
 
 // 统计某需求下工单数量
-int countWorkRecordByRequirement(sqlite3* db, int requirementId) {
+DaoResult countWorkRecordByRequirement(sqlite3* db, int64_t requirementId, int& count) {
     sqlite3_stmt* stmt = nullptr;
-    db_util::prepare_throw(db, constants_sql::SQL_COUNT_WORK_RECORD_BY_REQUIREMENT, &stmt);
-    int count = 0;
-    sqlite3_bind_int(stmt, 1, requirementId);
-    db_util::exec_select(db, stmt, [&](sqlite3_stmt* s){
+    
+    DAO_SAFE_PREPARE(db, constants_sql::SQL_COUNT_WORK_RECORD_BY_REQUIREMENT, stmt, "countWorkRecordByRequirement");
+    
+    sqlite3_bind_int64(stmt, 1, requirementId);
+    
+    DAO_SAFE_EXEC_SELECT(db, stmt, [&](sqlite3_stmt* s) {
         count = sqlite3_column_int(s, 0);
-    });
-    return count;
+    }, "countWorkRecordByRequirement");
+    
+    return DaoResult::SUCCESS;
 }
 
 // 删除需求记录
-bool deleteRequirementRecord(sqlite3* db, int id) {
+DaoResult deleteRequirementRecord(sqlite3* db, int64_t id) {
     sqlite3_stmt* stmt = nullptr;
-    db_util::prepare_throw(db, constants_sql::SQL_DELETE_REQUIREMENT_RECORD, &stmt);
+    
+    DAO_SAFE_PREPARE(db, constants_sql::SQL_DELETE_REQUIREMENT_RECORD, stmt, "deleteRequirementRecord");
+    
     sqlite3_bind_int(stmt, 1, id);
-    return db_util::exec_stmt_done(db, stmt);
+    
+    DAO_SAFE_EXEC_DONE(db, stmt, "deleteRequirementRecord");
+    
+    return DaoResult::SUCCESS;
 }
 
 // 分页查询需求记录
-std::vector<RequirementRecord> queryRequirementRecordsPagedDao(sqlite3* db, int page, int page_size, int& total, const std::string& status_id, const std::string& affected_id, const std::string& source_type_id) {
-    std::vector<RequirementRecord> records;
-    std::string whereClause = "";
+DaoResult queryRequirementRecordsPaged(sqlite3* db, int page, int page_size, int& total,
+                                          const std::string& status_id, const std::string& affected_id, 
+                                          const std::string& source_type_id, std::vector<RequirementRecord>& records) {
+    records.clear();
+    
+    std::string whereClause;
     std::vector<std::string> conditions;
     if (!status_id.empty()) {
         conditions.push_back("r.requirement_status_id = " + status_id);
@@ -116,21 +149,28 @@ std::vector<RequirementRecord> queryRequirementRecordsPagedDao(sqlite3* db, int 
         whereClause = "WHERE " + std::accumulate(conditions.begin(), conditions.end(), std::string(),
             [](const std::string& a, const std::string& b) { return a + (a.empty() ? "" : " AND ") + b; });
     }
+    
     // 查询总数
     std::string countSql = std::string(constants_sql::SQL_COUNT_REQUIREMENT_RECORD_BASE) + whereClause + ";";
     sqlite3_stmt* countStmt = nullptr;
-    db_util::prepare_throw(db, countSql.c_str(), &countStmt);
-    db_util::exec_select(db, countStmt, [&](sqlite3_stmt* s){
+    
+    DAO_SAFE_PREPARE(db, countSql.c_str(), countStmt, "queryRequirementRecordsPaged_count");
+    
+    DAO_SAFE_EXEC_SELECT(db, countStmt, [&](sqlite3_stmt* s) {
         total = sqlite3_column_int(s, 0);
-    });
+    }, "queryRequirementRecordsPaged_count");
+    
     // 查询分页数据
     std::string sql = std::string(constants_sql::SQL_SELECT_REQUIREMENT_RECORD_PAGED_BASE) + whereClause + " ORDER BY r.id DESC LIMIT ? OFFSET ?";
     sqlite3_stmt* stmt = nullptr;
-    db_util::prepare_throw(db, sql.c_str(), &stmt);
+    
+    DAO_SAFE_PREPARE(db, sql.c_str(), stmt, "queryRequirementRecordsPaged");
+    
     int offset = (page - 1) * page_size;
     sqlite3_bind_int(stmt, 1, page_size);
     sqlite3_bind_int(stmt, 2, offset);
-    db_util::exec_select(db, stmt, [&](sqlite3_stmt* s){
+    
+    DAO_SAFE_EXEC_SELECT(db, stmt, [&](sqlite3_stmt* s) {
         RequirementRecord r;
         r.id = sqlite3_column_int(s, 0);
         r.title = reinterpret_cast<const char*>(sqlite3_column_text(s, 1));
@@ -147,19 +187,7 @@ std::vector<RequirementRecord> queryRequirementRecordsPagedDao(sqlite3* db, int 
         r.employee_name = sqlite3_column_type(s, 12) == SQLITE_NULL ? "" : reinterpret_cast<const char*>(sqlite3_column_text(s, 12));
         r.department_id = sqlite3_column_type(s, 13) == SQLITE_NULL ? 0 : sqlite3_column_int(s, 13);
         records.push_back(r);
-    });
-    return records;
-}
-
-// 获取需求相关的所有文件路径
-inline std::vector<std::string> getAllFilesByRequirement(sqlite3* db, int requirement_id) {
-    std::vector<std::string> filePaths;
-    sqlite3_stmt* stmt = nullptr;
-    db_util::prepare_throw(db, constants_sql::SQL_SELECT_FILES_BY_REQUIREMENT_ID, &stmt);
-    sqlite3_bind_int(stmt, 1, requirement_id);
-    db_util::exec_select(db, stmt, [&](sqlite3_stmt* s){
-        const char* path = reinterpret_cast<const char*>(sqlite3_column_text(s, 0));
-        if (path) filePaths.push_back(std::string(path));
-    });
-    return filePaths;
+    }, "queryRequirementRecordsPaged");
+    
+    return DaoResult::SUCCESS;
 }

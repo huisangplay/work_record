@@ -1,47 +1,69 @@
-#include"dao/requirement_status_dict_dao.h"
+#include "dao/requirement_status_dict_dao.h"
+#include "util/dao_util.h"
 #include "constants/constants_sql.h"
-#include "util/db_util.h"
-using namespace db_util;
 
-std::vector<RequirementStatusDict> queryAllRequirementStatusDict(sqlite3* db) {
-    std::vector<RequirementStatusDict> list;
-    sqlite3_stmt* stmt;
-    db_util::prepare_throw(db, constants_sql::SQL_SELECT_ALL_REQUIREMENT_STATUS_DICT, &stmt);
-    db_util::exec_select(db, stmt, [&](sqlite3_stmt* s){
+using namespace dao_util;
+
+// 查询所有需求状态字典
+DaoResult queryAllRequirementStatusDict(sqlite3* db, std::vector<RequirementStatusDict>& list) {
+    list.clear();
+    sqlite3_stmt* stmt = nullptr;
+    
+    DAO_SAFE_PREPARE(db, constants_sql::SQL_SELECT_ALL_REQUIREMENT_STATUS_DICT, stmt, "queryAllRequirementStatusDict");
+    
+    DAO_SAFE_EXEC_SELECT(db, stmt, [&](sqlite3_stmt* s) {
         RequirementStatusDict d;
         d.id = sqlite3_column_int(s, 0);
         d.status = reinterpret_cast<const char*>(sqlite3_column_text(s, 1));
         d.comment = reinterpret_cast<const char*>(sqlite3_column_text(s, 2));
         d.requirement_status_class = reinterpret_cast<const char*>(sqlite3_column_text(s, 3));
         list.push_back(d);
-    });
-    return list;
+    }, "queryAllRequirementStatusDict");
+    
+    return DaoResult::SUCCESS;
 }
 
-bool insertRequirementStatusDict(sqlite3* db, RequirementStatusDict& item) {
-    sqlite3_stmt* stmt;
-    db_util::prepare_throw(db, constants_sql::SQL_INSERT_REQUIREMENT_STATUS_DICT, &stmt);
+// 插入需求状态字典
+DaoResult insertRequirementStatusDict(sqlite3* db, RequirementStatusDict& item) {
+    sqlite3_stmt* stmt = nullptr;
+    
+    DAO_SAFE_PREPARE(db, constants_sql::SQL_INSERT_REQUIREMENT_STATUS_DICT, stmt, "insertRequirementStatusDict");
+    
     sqlite3_bind_text(stmt, 1, item.status.c_str(), -1, SQLITE_STATIC);
     sqlite3_bind_text(stmt, 2, item.comment.c_str(), -1, SQLITE_STATIC);
     sqlite3_bind_text(stmt, 3, item.requirement_status_class.c_str(), -1, SQLITE_STATIC);
-    if (!db_util::exec_stmt_done(db, stmt)) return false;
+    
+    DAO_SAFE_EXEC_DONE(db, stmt, "insertRequirementStatusDict");
+    
     item.id = sqlite3_last_insert_rowid(db);
-    return true;
+    return DaoResult::SUCCESS;
 }
 
-bool updateRequirementStatusDict(sqlite3* db, const RequirementStatusDict& item) {
-    sqlite3_stmt* stmt;
-    db_util::prepare_throw(db, constants_sql::SQL_UPDATE_REQUIREMENT_STATUS_DICT, &stmt);
+// 更新需求状态字典
+DaoResult updateRequirementStatusDict(sqlite3* db, const RequirementStatusDict& item) {
+    sqlite3_stmt* stmt = nullptr;
+    
+    DAO_SAFE_PREPARE(db, constants_sql::SQL_UPDATE_REQUIREMENT_STATUS_DICT, stmt, "updateRequirementStatusDict");
+    
     sqlite3_bind_text(stmt, 1, item.status.c_str(), -1, SQLITE_STATIC);
     sqlite3_bind_text(stmt, 2, item.comment.c_str(), -1, SQLITE_STATIC);
     sqlite3_bind_text(stmt, 3, item.requirement_status_class.c_str(), -1, SQLITE_STATIC);
     sqlite3_bind_int(stmt, 4, item.id);
-    return db_util::exec_stmt_done(db, stmt);
+    
+    DAO_SAFE_EXEC_DONE(db, stmt, "updateRequirementStatusDict");
+    
+    return DaoResult::SUCCESS;
 }
 
-bool deleteRequirementStatusDict(sqlite3* db, int id) {
-    sqlite3_stmt* stmt;
-    db_util::prepare_throw(db, constants_sql::SQL_DELETE_REQUIREMENT_STATUS_DICT, &stmt);
+// 删除需求状态字典
+DaoResult deleteRequirementStatusDict(sqlite3* db, int64_t id) {
+    sqlite3_stmt* stmt = nullptr;
+    
+    DAO_SAFE_PREPARE(db, constants_sql::SQL_DELETE_REQUIREMENT_STATUS_DICT, stmt, "deleteRequirementStatusDict");
+    
     sqlite3_bind_int(stmt, 1, id);
-    return db_util::exec_stmt_done(db, stmt);
-}
+    
+    DAO_SAFE_EXEC_DONE(db, stmt, "deleteRequirementStatusDict");
+    
+    return DaoResult::SUCCESS;
+} 

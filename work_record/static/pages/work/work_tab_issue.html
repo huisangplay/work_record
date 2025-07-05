@@ -53,7 +53,13 @@ function loadIssueRecords() {
   axios.get('/api/issues', {
     params: { page: issuePage, page_size: issuePageSize, source_type_id: issueSourceType, affected_id: issueAffected }
   }).then(res => {
-    const { records, total, page, page_size } = res.data;
+    // 后端返回的是分页格式，数据在 records 字段中
+    const responseData = res.data.data || res.data;
+    const records = responseData.records || [];
+    const total = responseData.total || records.length;
+    const page = responseData.page || issuePage;
+    const page_size = responseData.page_size || issuePageSize;
+    
     // 表头顺序：序号、提出人、问题标题、描述、进度、责任人、来源、影响、创建时间、操作
     let html = `<table class="table table-hover align-middle"><thead><tr>
       <th style="width: 60px">序号</th><th style="width: 100px">提出人</th><th style="width: 150px">问题标题</th><th style="width: 200px">描述</th><th style="width: 80px">进度</th><th style="width: 80px">责任人</th><th style="width: 80px">来源</th><th style="width: 80px">影响</th><th style="width: 100px">创建时间</th><th style="width: 120px">操作</th></tr></thead><tbody>`;
@@ -77,7 +83,8 @@ function loadIssueRecords() {
     html += '</tbody></table>';
     $('#issueTableWrap').html(html);
     
-    // 分页
+    // 分页 - 如果没有分页信息，隐藏分页控件
+    if (total > page_size) {
     let pageCount = Math.ceil(total/page_size);
     let pagHtml = `<ul class="pagination pagination-sm mb-0">`;
     for(let i=1;i<=pageCount;i++) {
@@ -90,6 +97,9 @@ function loadIssueRecords() {
       issuePage = parseInt($(this).text());
       loadIssueRecords();
     });
+    } else {
+      $('#issuePagination').html('');
+    }
   });
 }
 
@@ -127,7 +137,7 @@ $('#issueTableWrap').off('click', '.btn-del').on('click', '.btn-del', function()
           loadIssueRecords();
         } else {
           return response.json().then(data => {
-            throw new Error(data.error || '删除失败');
+            throw new Error(data.message || '删除失败');
           });
         }
       }).catch(err => {
@@ -142,7 +152,9 @@ $('#issueTableWrap').off('click', '.btn-edit').on('click', '.btn-edit', function
   axios.get('/api/issues', {
     params: { page: 1, page_size: 1000 }
   }).then(res => {
-    const records = res.data.records || res.data;
+    // 后端返回的是分页格式，数据在 records 字段中
+    const responseData = res.data.data || res.data;
+    const records = responseData.records || [];
     const r = records.find(x => x.id == id);
     if (!r) { showSwalToast('error', '未找到该问题', 2000); return; }
     const $modal = $('#newIssueModal');
@@ -269,7 +281,7 @@ $('#submitNewIssue').off('click').on('click', function(){
       loadIssueRecords();
     } else {
       return response.json().then(data => {
-        throw new Error(data.error || (isEdit ? '修改失败' : '新建失败'));
+        throw new Error(data.message || (isEdit ? '修改失败' : '新建失败'));
       });
     }
   }).catch(err => {

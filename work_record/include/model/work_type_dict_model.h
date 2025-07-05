@@ -1,8 +1,9 @@
 #pragma once
 #include <string>
+#include <cstdint>
 
 struct WorkTypeDict {
-    int id;
+    int64_t id;
     std::string type;
     std::string comment;
 };

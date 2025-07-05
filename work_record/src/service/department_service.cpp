@@ -1,27 +1,43 @@
-#include"service/department_service.h"
+#include "service/department_service.h"
 #include "dao/department_dict_dao.h"
 #include "model/department_dict_model.h"
+#include "util/dao_util.h"
+#include "util/log_util.h"
+#include "util/response_util.h"
 #include <nlohmann/json.hpp>
 #include <sqlite3/sqlite3.h>
+
 using namespace httplib;
+using namespace dao_util;
+using namespace response_util;
 using json = nlohmann::json;
-extern sqlite3 * db;
+
+extern sqlite3* db;
+
 // 获取所有部门
 void get_all_departments(const Request& req, Response& res) {
     try {
-        auto departments = queryAllDepartmentDict(db);
-        json j = json::array();
-        for (const auto& dept : departments) {
-            j.push_back(json{
-                {"id", dept.id},
-                {"name", dept.name},
-                {"description", dept.description}
-            });
+        std::vector<DepartmentDict> departments;
+        auto result = queryAllDepartmentDict(db, departments);
+        
+        if (result == DaoResult::SUCCESS) {
+            json j = json::array();
+            for (const auto& dept : departments) {
+                j.push_back(json{
+                    {"id", dept.id},
+                    {"name", dept.name},
+                    {"description", dept.description}
+                });
+            }
+            send_data_direct(res, j);
+            spdlog::info("获取所有部门成功，数量: {}", departments.size());
+        } else {
+            spdlog::error("获取所有部门失败");
+            send_operation_failed(res, "获取", "部门列表");
         }
-        res.set_content(j.dump(), "application/json");
     } catch (const std::exception& e) {
-        res.status = 500;
-        res.set_content(json{{"error", e.what()}}.dump(), "application/json");
+        log_util::log_exception(e, "get_all_departments");
+        send_internal_error(res);
     }
 }
 
@@ -32,14 +48,18 @@ void add_department(const Request& req, Response& res) {
         dept.name = req.get_file_value("name").content;
         dept.description = req.get_file_value("description").content;
         
-        if (!insertDepartmentDict(db, dept)) {
-            throw std::runtime_error("部门插入失败");
-        }
+        auto result = insertDepartmentDict(db, dept);
         
-        res.set_content(json{{"id", dept.id}, {"success", true}}.dump(), "application/json");
+        if (result == DaoResult::SUCCESS) {
+            send_success(res, json{{"id", dept.id}});
+            spdlog::info("新增部门成功，ID: {}, 名称: {}", dept.id, dept.name);
+        } else {
+            spdlog::error("新增部门失败，名称: {}", dept.name);
+            send_operation_failed(res, "插入", "部门");
+        }
     } catch (const std::exception& e) {
-        res.status = 500;
-        res.set_content(json{{"error", e.what()}}.dump(), "application/json");
+        log_util::log_exception(e, "add_department");
+        send_internal_error(res);
     }
 }
 
@@ -51,29 +71,37 @@ void update_department(const Request& req, Response& res) {
         dept.name = req.get_file_value("name").content;
         dept.description = req.get_file_value("description").content;
         
-        if (!updateDepartmentDict(db, dept)) {
-            throw std::runtime_error("部门更新失败");
-        }
+        auto result = updateDepartmentDict(db, dept);
         
-        res.set_content(json{{"success", true}}.dump(), "application/json");
+        if (result == DaoResult::SUCCESS) {
+            send_success(res);
+            spdlog::info("更新部门成功，ID: {}, 名称: {}", dept.id, dept.name);
+        } else {
+            spdlog::error("更新部门失败，ID: {}, 名称: {}", dept.id, dept.name);
+            send_operation_failed(res, "更新", "部门");
+        }
     } catch (const std::exception& e) {
-        res.status = 500;
-        res.set_content(json{{"error", e.what()}}.dump(), "application/json");
+        log_util::log_exception(e, "update_department");
+        send_internal_error(res);
     }
 }
 
 // 删除部门
 void delete_department(const Request& req, Response& res) {
     try {
-        int id = std::stoi(req.get_param_value("id"));
+        int64_t id = std::stoll(req.get_param_value("id"));
         
-        if (!deleteDepartmentDict(db, id)) {
-            throw std::runtime_error("部门删除失败");
+        auto result = deleteDepartmentDict(db, id);
+        
+        if (result == DaoResult::SUCCESS) {
+            send_success(res);
+            spdlog::info("删除部门成功，ID: {}", id);
+        } else {
+            spdlog::error("删除部门失败，ID: {}", id);
+            send_operation_failed(res, "删除", "部门");
         }
-        
-        res.set_content(json{{"success", true}}.dump(), "application/json");
     } catch (const std::exception& e) {
-        res.status = 500;
-        res.set_content(json{{"error", e.what()}}.dump(), "application/json");
+        log_util::log_exception(e, "delete_department");
+        send_internal_error(res);
     }
-} 
+}

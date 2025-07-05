@@ -1,8 +1,9 @@
 #pragma once
 #include <string>
+#include <cstdint>
 
 struct AffectedTypeDict {
-    int id;
+    int64_t id;
     std::string affected;
     std::string comment;
 };

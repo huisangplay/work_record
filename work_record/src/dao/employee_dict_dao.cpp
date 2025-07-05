@@ -1,80 +1,117 @@
-#include"dao/employee_dict_dao.h"
-#include "util/db_util.h"
+#include "dao/employee_dict_dao.h"
+#include "util/dao_util.h"
 #include "constants/constants_sql.h"
-using namespace db_util;
-std::vector<EmployeeDict> queryAllEmployeeDict(sqlite3* db) {
-    std::vector<EmployeeDict> list;
-    sqlite3_stmt* stmt;
-    db_util::prepare_throw(db, constants_sql::SQL_SELECT_ALL_EMPLOYEE_DICT, &stmt);
-    db_util::exec_select(db, stmt, [&](sqlite3_stmt* s){
+
+using namespace dao_util;
+
+// 查询所有员工字典
+DaoResult queryAllEmployeeDict(sqlite3* db, std::vector<EmployeeDict>& list) {
+    list.clear();
+    sqlite3_stmt* stmt = nullptr;
+    
+    DAO_SAFE_PREPARE(db, constants_sql::SQL_SELECT_ALL_EMPLOYEE_DICT, stmt, "queryAllEmployeeDict");
+    
+    DAO_SAFE_EXEC_SELECT(db, stmt, [&](sqlite3_stmt* s) {
         EmployeeDict d;
         d.id = sqlite3_column_int(s, 0);
         d.name = reinterpret_cast<const char*>(sqlite3_column_text(s, 1));
         d.employee_number = reinterpret_cast<const char*>(sqlite3_column_text(s, 2));
         d.department_name = reinterpret_cast<const char*>(sqlite3_column_text(s, 3));
         list.push_back(d);
-    });
-    return list;
+    }, "queryAllEmployeeDict");
+    
+    return DaoResult::SUCCESS;
 }
 
-bool insertEmployeeDict(sqlite3* db, EmployeeDict& item) {
+// 插入员工字典
+DaoResult insertEmployeeDict(sqlite3* db, EmployeeDict& item) {
     int department_id = 0;
+    
+    // 查询部门ID
     if (!item.department_name.empty()) {
-        sqlite3_stmt* deptStmt;
-        db_util::prepare_throw(db, constants_sql::SQL_SELECT_EMPLOYEE_DEPT_ID_BY_NAME, &deptStmt);
+        sqlite3_stmt* deptStmt = nullptr;
+        DAO_SAFE_PREPARE(db, constants_sql::SQL_SELECT_EMPLOYEE_DEPT_ID_BY_NAME, deptStmt, "insertEmployeeDict_dept");
+        
         sqlite3_bind_text(deptStmt, 1, item.department_name.c_str(), -1, SQLITE_STATIC);
-        db_util::exec_select(db, deptStmt, [&](sqlite3_stmt* s){
+        
+        DAO_SAFE_EXEC_SELECT(db, deptStmt, [&](sqlite3_stmt* s) {
             department_id = sqlite3_column_int(s, 0);
-        });
+        }, "insertEmployeeDict_dept");
     }
-    sqlite3_stmt* stmt;
-    db_util::prepare_throw(db, constants_sql::SQL_INSERT_EMPLOYEE_DICT, &stmt);
+    
+    // 插入员工记录
+    sqlite3_stmt* stmt = nullptr;
+    DAO_SAFE_PREPARE(db, constants_sql::SQL_INSERT_EMPLOYEE_DICT, stmt, "insertEmployeeDict");
+    
     sqlite3_bind_text(stmt, 1, item.name.c_str(), -1, SQLITE_STATIC);
     sqlite3_bind_text(stmt, 2, item.employee_number.c_str(), -1, SQLITE_STATIC);
     sqlite3_bind_int(stmt, 3, department_id);
-    if (!db_util::exec_stmt_done(db, stmt)) return false;
+    
+    DAO_SAFE_EXEC_DONE(db, stmt, "insertEmployeeDict");
+    
     item.id = sqlite3_last_insert_rowid(db);
-    return true;
+    return DaoResult::SUCCESS;
 }
 
-bool updateEmployeeDict(sqlite3* db, const EmployeeDict& item) {
+// 更新员工字典
+DaoResult updateEmployeeDict(sqlite3* db, const EmployeeDict& item) {
     int department_id = 0;
+    
+    // 查询部门ID
     if (!item.department_name.empty()) {
-        sqlite3_stmt* deptStmt;
-        db_util::prepare_throw(db, constants_sql::SQL_SELECT_EMPLOYEE_DEPT_ID_BY_NAME, &deptStmt);
+        sqlite3_stmt* deptStmt = nullptr;
+        DAO_SAFE_PREPARE(db, constants_sql::SQL_SELECT_EMPLOYEE_DEPT_ID_BY_NAME, deptStmt, "updateEmployeeDict_dept");
+        
         sqlite3_bind_text(deptStmt, 1, item.department_name.c_str(), -1, SQLITE_STATIC);
-        db_util::exec_select(db, deptStmt, [&](sqlite3_stmt* s){
+        
+        DAO_SAFE_EXEC_SELECT(db, deptStmt, [&](sqlite3_stmt* s) {
             department_id = sqlite3_column_int(s, 0);
-        });
+        }, "updateEmployeeDict_dept");
     }
-    sqlite3_stmt* stmt;
-    db_util::prepare_throw(db, constants_sql::SQL_UPDATE_EMPLOYEE_DICT, &stmt);
+    
+    // 更新员工记录
+    sqlite3_stmt* stmt = nullptr;
+    DAO_SAFE_PREPARE(db, constants_sql::SQL_UPDATE_EMPLOYEE_DICT, stmt, "updateEmployeeDict");
+    
     sqlite3_bind_text(stmt, 1, item.name.c_str(), -1, SQLITE_STATIC);
     sqlite3_bind_text(stmt, 2, item.employee_number.c_str(), -1, SQLITE_STATIC);
     sqlite3_bind_int(stmt, 3, department_id);
     sqlite3_bind_int(stmt, 4, item.id);
-    return db_util::exec_stmt_done(db, stmt);
+    
+    DAO_SAFE_EXEC_DONE(db, stmt, "updateEmployeeDict");
+    
+    return DaoResult::SUCCESS;
 }
 
-bool deleteEmployeeDict(sqlite3* db, int id) {
-    sqlite3_stmt* stmt;
-    db_util::prepare_throw(db, constants_sql::SQL_DELETE_EMPLOYEE_DICT, &stmt);
+// 删除员工字典
+DaoResult deleteEmployeeDict(sqlite3* db, int64_t id) {
+    sqlite3_stmt* stmt = nullptr;
+    DAO_SAFE_PREPARE(db, constants_sql::SQL_DELETE_EMPLOYEE_DICT, stmt, "deleteEmployeeDict");
+    
     sqlite3_bind_int(stmt, 1, id);
-    return db_util::exec_stmt_done(db, stmt);
+    
+    DAO_SAFE_EXEC_DONE(db, stmt, "deleteEmployeeDict");
+    
+    return DaoResult::SUCCESS;
 }
 
-std::vector<EmployeeDict> queryEmployeeByDepartment(sqlite3* db, int department_id) {
-    std::vector<EmployeeDict> list;
-    sqlite3_stmt* stmt;
-    db_util::prepare_throw(db, constants_sql::SQL_SELECT_EMPLOYEE_BY_DEPARTMENT, &stmt);
+// 根据部门查询员工
+DaoResult queryEmployeeByDepartment(sqlite3* db, int department_id, std::vector<EmployeeDict>& list) {
+    list.clear();
+    sqlite3_stmt* stmt = nullptr;
+    
+    DAO_SAFE_PREPARE(db, constants_sql::SQL_SELECT_EMPLOYEE_BY_DEPARTMENT, stmt, "queryEmployeeByDepartment");
+    
     sqlite3_bind_int(stmt, 1, department_id);
-    db_util::exec_select(db, stmt, [&](sqlite3_stmt* s){
+    
+    DAO_SAFE_EXEC_SELECT(db, stmt, [&](sqlite3_stmt* s) {
         EmployeeDict d;
         d.id = sqlite3_column_int(s, 0);
         d.name = reinterpret_cast<const char*>(sqlite3_column_text(s, 1));
         d.employee_number = reinterpret_cast<const char*>(sqlite3_column_text(s, 2));
         d.department_name = reinterpret_cast<const char*>(sqlite3_column_text(s, 3));
         list.push_back(d);
-    });
-    return list;
+    }, "queryEmployeeByDepartment");
+    
+    return DaoResult::SUCCESS;
 } 
