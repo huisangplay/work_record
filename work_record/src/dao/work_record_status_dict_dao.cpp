@@ -4,7 +4,7 @@
 
 using namespace dao_util;
 
-// 查询所有工单状态字典
+// 查询所工作记录状态字典
 DaoResult queryAllWorkRecordStatusDict(sqlite3* db, std::vector<WorkRecordStatusDict>& list) {
     list.clear();
     sqlite3_stmt* stmt = nullptr;
@@ -22,7 +22,7 @@ DaoResult queryAllWorkRecordStatusDict(sqlite3* db, std::vector<WorkRecordStatus
     return DaoResult::SUCCESS;
 }
 
-// 插入工单状态字典
+// 插入工作记录状态字典
 DaoResult insertWorkRecordStatusDict(sqlite3* db, WorkRecordStatusDict& item) {
     sqlite3_stmt* stmt = nullptr;
     
@@ -37,7 +37,7 @@ DaoResult insertWorkRecordStatusDict(sqlite3* db, WorkRecordStatusDict& item) {
     return DaoResult::SUCCESS;
 }
 
-// 更新工单状态字典
+// 更新工作记录状态字典
 DaoResult updateWorkRecordStatusDict(sqlite3* db, const WorkRecordStatusDict& item) {
     sqlite3_stmt* stmt = nullptr;
     
@@ -52,7 +52,7 @@ DaoResult updateWorkRecordStatusDict(sqlite3* db, const WorkRecordStatusDict& it
     return DaoResult::SUCCESS;
 }
 
-// 删除工单状态字典
+// 删除工作记录状态字典
 DaoResult deleteWorkRecordStatusDict(sqlite3* db, int64_t id) {
     sqlite3_stmt* stmt = nullptr;
     

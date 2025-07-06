@@ -40,7 +40,7 @@ void get_work_records(const Request& req, Response& res) {
         newRecord.employee_id = std::stoi(req.get_file_value("employee_id").content);
         newRecord.completion_time = req.get_file_value("completion_time").content;
         
-        // 新建工单时处理completion_time
+        // 新建工作记录时处理completion_time
         if (req.has_file("completion_time")) {
             newRecord.completion_time = req.get_file_value("completion_time").content;
         }
@@ -73,7 +73,7 @@ void get_work_records(const Request& req, Response& res) {
             return;
         }
         
-        // 插入工单
+        // 插入工作记录
         int64_t newWorkId = 0;
         auto workResult = insertWorkRecord(db, newRecord, newWorkId);
         if (workResult != DaoResult::SUCCESS) {

@@ -70,7 +70,7 @@ namespace response_util {
      * 发送操作失败响应
      * @param res HTTP响应对象
      * @param operation 操作名称（如"插入"、"更新"、"删除"等）
-     * @param entity 实体名称（如"员工"、"部门"、"工单"等）
+     * @param entity 实体名称（如"员工"、"部门"、工作记录"等）
      */
     inline void send_operation_failed(Response& res, const std::string& operation, const std::string& entity) {
         send_error(res, entity + operation + "失败");

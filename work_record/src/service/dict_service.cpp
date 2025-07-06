@@ -74,10 +74,10 @@ void get_dict(const Request& req, Response& res) {
                     arr.push_back(json{{"id", item.id}, {"status_name", item.status_name}, {"status_class", item.status_class}});
                 }
                 send_data_direct(res, arr);
-                spdlog::info("获取工单状态字典成功，数量: {}", list.size());
+                spdlog::info("获取工作记录状态字典成功，数量: {}", list.size());
             } else {
-                spdlog::error("获取工单状态字典失败");
-                send_operation_failed(res, "获取", "工单状态字典");
+                spdlog::error("获取工作记录状态字典失败");
+                send_operation_failed(res, "获取", "工作记录状态字典");
             }
         } else if (table == "requirement_status_dict") {
             std::vector<RequirementStatusDict> list;
@@ -194,9 +194,9 @@ void add_dict(const Request& req, Response& res) {
             auto result = insertWorkRecordStatusDict(db, item);
             if (result == DaoResult::SUCCESS) {
                 send_success(res, json{{"id", item.id}});
-                spdlog::info("新增工单状态字典成功，ID: {}, 名称: {}", item.id, item.status_name);
+                spdlog::info("新增工作记录状态字典成功，ID: {}, 名称: {}", item.id, item.status_name);
             } else {
-                spdlog::error("新增工单状态字典失败，名称: {}", item.status_name);
+                spdlog::error("新增工作记录状态字典失败，名称: {}", item.status_name);
                 send_operation_failed(res, "插入", "字典项");
             }
         } else if (table == "requirement_status_dict") {
@@ -354,9 +354,9 @@ void update_dict(const Request& req, Response& res) {
             auto result = updateWorkRecordStatusDict(db, item);
             if (result == DaoResult::SUCCESS) {
                 send_success(res);
-                spdlog::info("更新工单状态字典成功，ID: {}, 名称: {}", item.id, item.status_name);
+                spdlog::info("更新工作记录状态字典成功，ID: {}, 名称: {}", item.id, item.status_name);
             } else {
-                spdlog::error("更新工单状态字典失败，ID: {}, 名称: {}", item.id, item.status_name);
+                spdlog::error("更新工作记录状态字典失败，ID: {}, 名称: {}", item.id, item.status_name);
                 send_operation_failed(res, "更新", "字典项");
             }
         } else if (table == "requirement_status_dict") {

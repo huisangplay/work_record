@@ -91,7 +91,7 @@ Work Record 是一个基于 C++23 + SQLite3 + HTTP 的工作记录管理系统�
 | type   | TEXT   | NOT NULL, UNIQUE | 来源名称   |
 | comment| TEXT   |                | 来源描述     |
 
-#### 8. work_record_status_dict（工单状态字典表）
+#### 8. work_record_status_dict（工作记录状态字典表）
 | 字段        | 类型   | 约束           | 说明         |
 | ----------- | ------ | -------------- | ------------ |
 | id          | INTEGER| PRIMARY KEY    | 状态ID       |
@@ -109,29 +109,29 @@ Work Record 是一个基于 C++23 + SQLite3 + HTTP 的工作记录管理系统�
 #### 10. work_record（工作记录表）
 | 字段                 | 类型     | 约束           | 说明         |
 | -------------------- | -------- | -------------- | ------------ |
-| id                   | INTEGER  | PRIMARY KEY    | 工单ID       |
+| id                   | INTEGER  | PRIMARY KEY    | 工作记录ID       |
 | requirement_id       | INTEGER  | NOT NULL, 外键 | 需求ID       |
 | create_time          | DATETIME | NOT NULL, 默认当前 | 创建时间 |
 | work_type_id         | INTEGER  | NOT NULL, 外键 | 工作类型ID   |
 | work_content         | TEXT     | NOT NULL       | 工作内容     |
 | affected_id          | INTEGER  | NOT NULL, 外键 | 影响类型ID   |
 | source_type_id       | INTEGER  | NOT NULL, 外键 | 来源类型ID   |
-| work_record_status_id| INTEGER  | NOT NULL, 外键 | 工单状态ID   |
+| work_record_status_id| INTEGER  | NOT NULL, 外键 | 工作记录状态ID   |
 | completion_time      | DATETIME | NOT NULL, 默认当前 | 完成时间 |
 | employee_id          | INTEGER  | 外键           | 完成人ID     |
 
-#### 11. work_record_files（工单文件关联表）
+#### 11. work_record_files（工作记录文件关联表）
 | 字段           | 类型     | 约束           | 说明         |
 | -------------- | -------- | -------------- | ------------ |
 | id             | INTEGER  | PRIMARY KEY    | 记录ID       |
-| work_record_id | INTEGER  | NOT NULL, 外键 | 工单ID       |
+| work_record_id | INTEGER  | NOT NULL, 外键 | ID       |
 | file_record_id | INTEGER  | NOT NULL, 外键 | 文件ID       |
 
 #### 12. issue_record（高频问题表）
 | 字段              | 类型     | 约束           | 说明         |
 | ----------------- | -------- | -------------- | ------------ |
 | id                | INTEGER  | PRIMARY KEY    | 问题ID       |
-| reported_by       | TEXT     | NOT NULL       | 来源工单/报告|
+| reported_by       | TEXT     | NOT NULL       | 来源工作记录/报告|
 | issue_title       | TEXT     | NOT NULL       | 问题标题     |
 | description       | TEXT     | NOT NULL       | 问题描述     |
 | progress_id       | INTEGER  | NOT NULL, 外键 | 进度ID       |
@@ -236,7 +236,7 @@ work_record_files
 - `DELETE /api/work_record/{id}` - 删除工作记录
 
 #### 文件管理
-- `POST /api/work_record/{id}/upload` - 上传文件到指定工单
+- `POST /api/work_record/{id}/upload` - 上传文件到指定工作记录
 - `GET /api/download` - 下载文件
 - `DELETE /api/file/{id}` - 删除单个文件
 
@@ -280,12 +280,12 @@ work_record_files
 
 #### 2. 文件上传流程
 ```
-文件选择 → 前端验证 → 上传API → 文件存储 → 数据库记录 → 关联工单 → 返回结果
+文件选择 → 前端验证 → 上传API → 文件存储 → 数据库记录 → 关联工作记录 → 返回结果
 ```
 
 #### 3. 需求跟踪流程
 ```
-需求创建 → 状态更新 → 工单关联 → 进度跟踪 → 统计分析
+需求创建 → 状态更新 → 工作记录关联 → 进度跟踪 → 统计分析
 ```
 
 ### 数据验证规则
@@ -330,8 +330,8 @@ work_record.html (主框架)
 ### 核心功能模块
 
 #### 1. 工作记录管理
-- 工单列表展示（分页、筛选）
-- 工单创建/编辑表单
+- 工作记录列表展示（分页、筛选）
+- 工作记录创建/编辑表单
 - 文件上传/下载
 - 状态管理
 
@@ -339,7 +339,7 @@ work_record.html (主框架)
 - 需求列表展示
 - 需求创建/编辑
 - 状态跟踪
-- 关联工单
+- 关联工作记录
 
 #### 3. 问题管理
 - 问题列表展示

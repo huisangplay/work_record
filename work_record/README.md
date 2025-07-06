@@ -17,7 +17,7 @@
 - **工作记录**：登记、查询、筛选、导出各类工作任务，支持文件上传和管理。
 - **需求进展**：需求全流程跟踪，支持来源、影响等多维度筛选。
 - **高频问题**：问题登记、进展跟踪、责任人管理。
-- **统计分析**：多维度工单统计，支持按员工、时间等维度分析。
+- **统计分析**：多维度工作记录统计，支持按员工、时间等维度分析。
 - **部门与员工管理**：支持部门、员工的增删改查及关联。
 - **字典维护**：支持各类字典（类型、状态、来源、影响等）自定义维护。
 
@@ -68,7 +68,7 @@ work_record/
 | work_type_dict       | 工作类型字典表 |
 | affected_type_dict   | 影响类型字典表 |
 | source_type_dict     | 来源类型字典表 |
-| work_record_status_dict | 工单状态字典表 |
+| work_record_status_dict | 工作记录状态字典表 |
 | issue_progress_dict  | 问题进度字典表 |
 
 > 详细字段见 `db/work_record_design.md` 或 `db/init.sql`
@@ -178,7 +178,7 @@ sqlite3 db/work_record.db < update_database.sql
 - **POST /api/get_work_records** 新建工作记录（含文件上传）
 - **POST /api/update_work_record** 修改工作记录
 - **DELETE /api/work_record/{id}** 删除工作记录
-- **POST /api/work_record/{id}/upload** 上传文件到指定工单
+- **POST /api/work_record/{id}/upload** 上传文件到指定工作记录
 - **GET /api/download** 下载文件
 - **DELETE /api/file/{id}** 删除单个文件
 
@@ -210,7 +210,7 @@ sqlite3 db/work_record.db < update_database.sql
 - **DELETE /api/employee** 删除员工
 
 ### 状态字典
-- **GET /api/work_record_status_dict** 获取工单状态字典
+- **GET /api/work_record_status_dict** 获取工作记录状态字典
 - **GET /api/requirement_status_dict** 获取需求状态字典
 - **GET /api/issue_progress_dict** 获取问题进度字典
 
@@ -224,7 +224,7 @@ sqlite3 db/work_record.db < update_database.sql
 - 右下角"字典维护"按钮可进入字典管理页面
 
 ### 页面功能
-- **工作记录页** (`work_tab_work.html`)：工单管理、文件上传、状态跟踪
+- **工作记录页** (`work_tab_work.html`)：工作记录管理、文件上传、状态跟踪
 - **需求进展页** (`work_tab_requirement.html`)：需求跟踪、状态管理
 - **问题管理页** (`work_tab_issue.html`)：问题登记、进度跟踪
 - **统计分析页** (`work_tab_stats.html`)：多维度数据统计
@@ -250,7 +250,7 @@ sqlite3 db/work_record.db < update_database.sql
 
 - **上传目录**：`upload/` 按年份和项目分类存储
 - **文件命名**：自动生成唯一文件名，保留原始扩展名
-- **文件关联**：通过 `work_record_files` 表关联工单和文件
+- **文件关联**：通过 `work_record_files` 表关联工作记录和文件
 
 ---
 

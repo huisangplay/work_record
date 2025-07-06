@@ -5,7 +5,7 @@
 
 using namespace dao_util;
 
-// 插入工单记录
+// 插入工作记录记录
 DaoResult insertWorkRecord(sqlite3 *db, const WorkRecord &record, int64_t &newId) {
     sqlite3_stmt *stmt = nullptr;
 
@@ -104,7 +104,7 @@ DaoResult getWorkRecordById(sqlite3 *db, int64_t id, WorkRecord &record) {
     return DaoResult::SUCCESS;
 }
 
-// 更新工单
+// 更新工作记录
 DaoResult updateWorkRecord(sqlite3 *db, const WorkRecord &record) {
     sqlite3_stmt *stmt = nullptr;
 
@@ -125,7 +125,7 @@ DaoResult updateWorkRecord(sqlite3 *db, const WorkRecord &record) {
     return exec_stmt_done_safe(db, stmt, "updateWorkRecord");
 }
 
-// 分页+过滤查询工单
+// 分页+过滤查询工作记录
 DaoResult queryWorkRecordsPaged(sqlite3 *db, const std::string &scope, int page, int page_size, int &total,
                                     const std::string &status_id, const std::string &affected_id,
                                     const std::string &source_type_id, const std::string &requirement_id,
@@ -282,7 +282,7 @@ DaoResult queryWorkRecordsPaged(sqlite3 *db, const std::string &scope, int page,
     return DaoResult::SUCCESS;
 }
 
-// 分页+过滤查询工单（返回vector版本）
+// 分页+过滤查询工作记录（返回vector版本）
 std::vector<WorkRecord> queryWorkRecordsPagedDao(sqlite3* db, const std::string& scope, int page, int page_size, int& total, const std::string& status_id, const std::string& affected_id, const std::string& source_type_id, const std::string& requirement_id, const std::string& work_type_id) {
     std::vector<WorkRecord> records;
     if (auto result = queryWorkRecordsPaged(db, scope, page, page_size, total, status_id, affected_id, source_type_id, requirement_id, work_type_id, records); result != DaoResult::SUCCESS) {

@@ -16,7 +16,7 @@ dao_util::DaoResult insertRequirementRecord(sqlite3* db, const RequirementRecord
 
 dao_util::DaoResult updateRequirementRecord(sqlite3* db, const RequirementRecord& record) ;
 
-// 统计某需求下工单数量
+// 统计某需求下工作记录数量
 dao_util::DaoResult countWorkRecordByRequirement(sqlite3* db, int64_t requirementId, int& count) ;
 
 // 删除需求记录

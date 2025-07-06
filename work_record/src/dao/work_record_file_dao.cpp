@@ -4,7 +4,7 @@
 
 using namespace dao_util;
 
-// 插入工单文件关联
+// 插入工作记录文件关联
 DaoResult insertWorkFileRel(sqlite3* db, int workId, int fileId) {
     sqlite3_stmt* stmt = nullptr;
     

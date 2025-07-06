@@ -6,7 +6,7 @@ function renderStats() {
   // 删除总需求数和未关闭问题的统计
   $('#statsCards').html('');
 
-  // 新增：工单统计
+  // 新增：工作记录统计
   axios.get('http://10.11.55.89:1994/ticket/get_ticket_count_statistics_by_employee_code?employee_code=500958').then(res => {
     const d = res.data || {};
     $('#ticketStatsCards').html(`
@@ -23,7 +23,7 @@ function renderStats() {
         <div class="card border-0 shadow-sm h-100 bg-success text-white">
           <div class="card-body text-center">
             <div class="mb-2" style="font-size:2.2em;"><i class="bi bi-calendar-week"></i></div>
-            <div class="fw-bold" style="font-size:1.2em;">本周处理工单数</div>
+            <div class="fw-bold" style="font-size:1.2em;">本周处理工作记录数</div>
             <div class="fs-5">${d.week_count || 0}</div>
           </div>
         </div>
@@ -32,7 +32,7 @@ function renderStats() {
         <div class="card border-0 shadow-sm h-100 bg-info text-white">
           <div class="card-body text-center">
             <div class="mb-2" style="font-size:2.2em;"><i class="bi bi-calendar-event"></i></div>
-            <div class="fw-bold" style="font-size:1.2em;">本月处理工单数</div>
+            <div class="fw-bold" style="font-size:1.2em;">本月处理工作记录数</div>
             <div class="fs-5">${d.month_count || 0}</div>
           </div>
         </div>
@@ -41,7 +41,7 @@ function renderStats() {
         <div class="card border-0 shadow-sm h-100 bg-primary text-white">
           <div class="card-body text-center">
             <div class="mb-2" style="font-size:2.2em;"><i class="bi bi-calendar-range"></i></div>
-            <div class="fw-bold" style="font-size:1.2em;">本年处理工单数</div>
+            <div class="fw-bold" style="font-size:1.2em;">本年处理工作记录数</div>
             <div class="fs-5">${d.year_count || 0}</div>
           </div>
         </div>
@@ -63,7 +63,7 @@ function renderStats() {
         <div class="card border-0 shadow-sm h-100 bg-success text-white">
           <div class="card-body text-center">
             <div class="mb-2" style="font-size:2.2em;"><i class="bi bi-calendar-week"></i></div>
-            <div class="fw-bold" style="font-size:1.2em;">本周处理工单数</div>
+            <div class="fw-bold" style="font-size:1.2em;">本周处理工作记录数</div>
             <div class="fs-5">0</div>
           </div>
         </div>
@@ -72,7 +72,7 @@ function renderStats() {
         <div class="card border-0 shadow-sm h-100 bg-info text-white">
           <div class="card-body text-center">
             <div class="mb-2" style="font-size:2.2em;"><i class="bi bi-calendar-event"></i></div>
-            <div class="fw-bold" style="font-size:1.2em;">本月处理工单数</div>
+            <div class="fw-bold" style="font-size:1.2em;">本月处理工作记录数</div>
             <div class="fs-5">0</div>
           </div>
         </div>
@@ -81,7 +81,7 @@ function renderStats() {
         <div class="card border-0 shadow-sm h-100 bg-primary text-white">
           <div class="card-body text-center">
             <div class="mb-2" style="font-size:2.2em;"><i class="bi bi-calendar-range"></i></div>
-            <div class="fw-bold" style="font-size:1.2em;">本年处理工单数</div>
+            <div class="fw-bold" style="font-size:1.2em;">本年处理工作记录数</div>
             <div class="fs-5">0</div>
           </div>
         </div>

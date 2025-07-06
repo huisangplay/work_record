@@ -100,7 +100,7 @@ DaoResult updateRequirementRecord(sqlite3* db, const RequirementRecord& record) 
     return DaoResult::SUCCESS;
 }
 
-// 统计某需求下工单数量
+// 统计某需求下工作记录数量
 DaoResult countWorkRecordByRequirement(sqlite3* db, int64_t requirementId, int& count) {
     sqlite3_stmt* stmt = nullptr;
     

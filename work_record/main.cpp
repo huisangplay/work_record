@@ -70,13 +70,13 @@ bool start_server() {
         // [POST] 创建工作记录（含文件上传）
         svr.Post("/api/get_work_records", get_work_records);
 
-        // [GET] 工单状态字典
+        // [GET] 工作记录状态字典
         svr.Get("/api/work_record_status_dict", get_work_record_status_dict);
         
-        // [DELETE] 删除工单
+        // [DELETE] 删除工作记录
         svr.Delete(R"(/api/work_record/(\d+))", delete_work_record);
         
-        // [POST] 工单上传文件
+        // [POST] 工作记录上传文件
         svr.Post(R"(/api/work_record/(\d+)/upload)", upload_work_record_file);
         
         // [GET] 文件下载
