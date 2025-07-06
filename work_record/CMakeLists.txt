@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.16)
 project(work_record)
 
 # 设置 C++ 标准
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # 设置输出目录
@@ -37,6 +37,9 @@ file(GLOB SERVICE_SOURCES "src/service/*.cpp")
 # Util 层源文件
 file(GLOB UTIL_SOURCES "src/util/*.cpp")
 
+# Config 层源文件
+file(GLOB CONFIG_SOURCES "src/config/*.cpp")
+
 # 第三方库源文件
 set(THIRD_PARTY_SOURCES
     third_party/sqlite3/sqlite3.c
@@ -54,6 +57,7 @@ set(ALL_SOURCES
     ${DAO_SOURCES}
     ${SERVICE_SOURCES}
     ${UTIL_SOURCES}
+    ${CONFIG_SOURCES}
     ${THIRD_PARTY_SOURCES}
 )
 
@@ -96,4 +100,5 @@ message(STATUS "  Main: ${MAIN_SOURCE}")
 message(STATUS "  DAO: ${DAO_SOURCES}")
 message(STATUS "  Service: ${SERVICE_SOURCES}")
 message(STATUS "  Util: ${UTIL_SOURCES}")
+message(STATUS "  Config: ${CONFIG_SOURCES}")
 message(STATUS "  Third Party: ${THIRD_PARTY_SOURCES}") 

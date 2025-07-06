@@ -15,44 +15,86 @@
 #include "service/requirement_service.h"
 #include "util/log_util.h"
 #include "util/dao_util.h"
+#include "config/ConfigInitializer.h"
+#include "config/ConfigManager.h"
 
 using namespace httplib;
 using namespace dao_util;
 using json = nlohmann::json;
 
-constexpr const char* DB_PATH = "db/work_record.db";
 sqlite3* db = nullptr;
 
-// 安全的数据库初始化
-bool initialize_database() {
-    spdlog::info("正在初始化数据库连接...");
+// RAII资源管理类
+class ApplicationResources {
+private:
+    bool db_initialized = false;
     
-    db = db_util::openDB(DB_PATH);
-    if (!db) {
-        spdlog::error("数据库连接失败: {}", DB_PATH);
-        return false;
+public:
+    ApplicationResources() = default;
+    
+    ~ApplicationResources() {
+        cleanup();
     }
     
-    // 测试数据库连接
-    auto result = exec_sql_safe(db, "SELECT 1", "database_connection_test");
-    if (result != DaoResult::SUCCESS) {
-        spdlog::error("数据库连接测试失败");
-        sqlite3_close(db);
-        db = nullptr;
-        return false;
+    // 禁用拷贝构造和赋值
+    ApplicationResources(const ApplicationResources&) = delete;
+    ApplicationResources& operator=(const ApplicationResources&) = delete;
+    
+    // 初始化数据库
+    bool initializeDatabase() {
+        spdlog::info("正在初始化数据库连接...");
+        
+        ConfigManager& config = ConfigManager::getInstance();
+        std::string dbPath = config.getString("database.path", "db/work_record.db");
+        
+        db = db_util::openDB(dbPath.c_str());
+        if (!db) {
+            spdlog::error("数据库连接失败: {}", dbPath);
+            return false;
+        }
+        
+        // 测试数据库连接
+        auto result = exec_sql_safe(db, "SELECT 1", "database_connection_test");
+        if (result != DaoResult::SUCCESS) {
+            spdlog::error("数据库连接测试失败");
+            sqlite3_close(db);
+            db = nullptr;
+            return false;
+        }
+        
+        db_initialized = true;
+        spdlog::info("数据库连接成功: {}", dbPath);
+        return true;
     }
     
-    spdlog::info("数据库连接成功: {}", DB_PATH);
-    return true;
-}
+    // 清理资源
+    void cleanup() {
+        spdlog::info("正在清理资源...");
+        
+        if (db && db_initialized) {
+            sqlite3_close(db);
+            db = nullptr;
+            db_initialized = false;
+            spdlog::info("数据库连接已关闭");
+        }
+        
+        spdlog::info("资源清理完成");
+        
+        // 最后清理日志系统
+        log_util::shutdown();
+    }
+};
 
 // 安全的服务启动
 bool start_server() {
     try {
         Server svr;
         
+        ConfigManager& config = ConfigManager::getInstance();
+        
         // 设置静态文件目录
-        svr.set_base_dir("./static");
+        std::string staticDir = config.getString("server.static_dir", "./static");
+        svr.set_base_dir(staticDir.c_str());
         
         // 设置路由
         // [GET] 获取工作记录
@@ -154,10 +196,13 @@ bool start_server() {
             spdlog::info("HTTP {} {} - {}", req.method, req.path, res.status);
         });
         
-        std::cout << "🚀 服务已启动：http://localhost:8080\n";
-        spdlog::info("HTTP服务器启动成功，监听端口: 8080");
+        std::string host = config.getString("server.host", "0.0.0.0");
+        int port = config.getInt("server.port", 8080);
         
-        svr.listen("0.0.0.0", 8080);
+        std::cout << "🚀 服务已启动：http://" << host << ":" << port << "\n";
+        spdlog::info("HTTP服务器启动成功，监听地址: {}:{}", host, port);
+        
+        svr.listen(host.c_str(), port);
         return true;
         
     } catch (const std::exception& e) {
@@ -166,60 +211,65 @@ bool start_server() {
     }
 }
 
-// 安全的清理函数
-void cleanup() {
-    spdlog::info("正在清理资源...");
-    
-    if (db) {
-        sqlite3_close(db);
-        db = nullptr;
-        spdlog::info("数据库连接已关闭");
-    }
-    
-    spdlog::info("资源清理完成");
-    
-    // 最后清理日志系统
-    log_util::shutdown();
-}
-
 // ==== 主程序入口 ====
 int main() {
-    int exit_code = 0;
-    
     try {
         // 设置控制台输出代码页为 UTF-8
         SetConsoleOutputCP(CP_UTF8);
 
+        // 初始化配置系统
+        spdlog::info("开始初始化配置系统...");
+        if (!config::initialize("config", "development")) {
+            std::cerr << "配置系统初始化失败" << std::endl;
+            spdlog::error("配置系统初始化失败，程序退出");
+            return 1;
+        }
+        spdlog::info("配置系统初始化完成");
+        
+        ConfigManager& config = ConfigManager::getInstance();
+        
         // 初始化日志器
-        log_util::init("app_logger", "logs/app.log", spdlog::level::info, spdlog::level::info);
+        std::string logFile = config.getString("logging.file", "logs/app.log");
+        std::string logLevel = config.getString("logging.level", "info");
+        
+        // 转换日志级别
+        spdlog::level::level_enum level = spdlog::level::info;
+        if (logLevel == "debug") level = spdlog::level::debug;
+        else if (logLevel == "warn") level = spdlog::level::warn;
+        else if (logLevel == "error") level = spdlog::level::err;
+        
+        log_util::init("app_logger", logFile, level, level);
         spdlog::info("=== 应用程序启动 ===");
+        spdlog::info("环境: {}", config::getEnvironment());
+        spdlog::info("配置目录: {}", config::getConfigDir());
+        spdlog::info("日志系统初始化完成");
 
         // 初始化数据库
-        if (!initialize_database()) {
+        spdlog::info("开始初始化数据库...");
+        ApplicationResources resources;
+        if (!resources.initializeDatabase()) {
             spdlog::error("数据库初始化失败，程序退出");
-            exit_code = 1;
-            goto cleanup_and_exit;
+            return 1;
         }
         
         // 启动服务器
+        spdlog::info("开始启动服务器...");
         if (!start_server()) {
             spdlog::error("服务器启动失败，程序退出");
-            exit_code = 1;
-            goto cleanup_and_exit;
+            return 1;
         }
+        
+        // 正常退出
+        return 0;
         
     } catch (const std::exception& e) {
         log_util::log_exception(e, "main");
         spdlog::error("主程序发生未捕获异常，程序退出");
-        exit_code = 1;
+        return 1;
     } catch (...) {
         spdlog::error("主程序发生未知异常，程序退出");
-        exit_code = 1;
+        return 1;
     }
-    
-cleanup_and_exit:
-    cleanup();
-    return exit_code;
 }
 
 

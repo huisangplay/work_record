@@ -1,0 +1,112 @@
+{
+  "app": {
+    "name": "work_record",
+    "version": "1.0.0",
+    "environment": "development",
+    "description": "工作记录管理系统"
+  },
+  "server": {
+    "host": "0.0.0.0",
+    "port": 8080,
+    "static_dir": "./static",
+    "max_connections": 1000,
+    "timeout": 30,
+    "thread_pool_size": 4
+  },
+  "database": {
+    "type": "sqlite",
+    "path": "db/work_record.db",
+    "backup_enabled": true,
+    "backup_interval": 3600,
+    "max_connections": 10,
+    "connection_timeout": 30,
+    "enable_foreign_keys": true
+  },
+  "upload": {
+    "base_dir": "./static/upload",
+    "max_file_size": 10485760,
+    "allowed_extensions": [
+      ".txt", ".pdf", ".doc", ".docx", 
+      ".xls", ".xlsx", ".ppt", ".pptx",
+      ".jpg", ".jpeg", ".png", ".gif",
+      ".zip", ".rar", ".7z"
+    ],
+    "organize_by_year": true,
+    "organize_by_requirement": true,
+    "create_thumbnails": false,
+    "max_files_per_upload": 10
+  },
+  "logging": {
+    "level": "info",
+    "file": "logs/app.log",
+    "max_file_size": 10485760,
+    "max_files": 5,
+    "console_enabled": true,
+    "file_enabled": true,
+    "format": "[%Y-%m-%d %H:%M:%S.%e] [%l] [%t] %v",
+    "flush_interval": 3
+  },
+  "security": {
+    "cors_enabled": true,
+    "allowed_origins": [
+      "http://localhost:3000", 
+      "http://localhost:8080",
+      "http://127.0.0.1:3000",
+      "http://127.0.0.1:8080"
+    ],
+    "rate_limit_enabled": true,
+    "rate_limit_requests": 100,
+    "rate_limit_window": 60,
+    "max_request_size": 10485760,
+    "session_timeout": 3600
+  },
+  "features": {
+    "file_upload_enabled": true,
+    "file_download_enabled": true,
+    "pagination_enabled": true,
+    "search_enabled": true,
+    "export_enabled": true,
+    "real_time_notifications": false,
+    "audit_log_enabled": true,
+    "backup_enabled": true
+  },
+  "pagination": {
+    "default_page_size": 20,
+    "max_page_size": 100,
+    "page_size_options": [10, 20, 50, 100]
+  },
+  "search": {
+    "max_results": 1000,
+    "highlight_enabled": true,
+    "fuzzy_search_enabled": true,
+    "search_timeout": 30
+  },
+  "export": {
+    "max_records": 10000,
+    "formats": ["csv", "excel", "pdf"],
+    "timeout": 300
+  },
+  "notifications": {
+    "email_enabled": false,
+    "smtp_host": "",
+    "smtp_port": 587,
+    "smtp_username": "",
+    "smtp_password": "",
+    "from_email": "",
+    "to_email": ""
+  },
+  "backup": {
+    "auto_backup_enabled": true,
+    "backup_interval": 86400,
+    "backup_retention_days": 30,
+    "backup_dir": "./backups",
+    "compress_backup": true
+  },
+  "performance": {
+    "cache_enabled": false,
+    "cache_size": 1000,
+    "cache_ttl": 3600,
+    "query_timeout": 30,
+    "connection_pool_size": 10
+  }
+} 

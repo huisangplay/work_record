@@ -29,15 +29,21 @@
 work_record/
 ├── build_cmake/           # CMake构建输出目录
 ├── include/              # 头文件目录
+│   ├── config/          # 配置中心
 │   ├── constants/        # 常量定义
 │   ├── dao/             # 数据访问层
 │   ├── model/           # 数据模型
 │   ├── service/         # 业务逻辑层
 │   └── util/            # 工具类
 ├── src/                 # 源代码目录
+│   ├── config/         # 配置中心实现
 │   ├── dao/            # 数据访问层实现
 │   ├── service/        # 业务逻辑层实现
 │   └── util/           # 工具类实现
+├── config/             # 配置文件目录
+│   ├── app.json        # 主配置文件
+│   ├── development.json # 开发环境配置
+│   └── production.json  # 生产环境配置
 ├── static/             # 前端静态文件
 │   └── pages/work/     # 工作页面
 ├── third_party/        # 第三方库
@@ -134,6 +140,102 @@ cd build_cmake/bin
 ./work_record.exe
 # 默认服务地址：http://localhost:8080
 ```
+
+---
+
+## 配置中心
+
+系统采用灵活的配置中心设计，支持多环境配置管理和动态配置加载。
+
+### 配置文件结构
+
+- **app.json**：主配置文件，包含所有配置项的默认值
+- **development.json**：开发环境特定配置，会覆盖 app.json 中的相应配置
+- **production.json**：生产环境特定配置，会覆盖 app.json 中的相应配置
+
+### 配置优先级
+
+1. **环境变量**（最高优先级）
+   - 格式：`WORK_RECORD_配置键`
+   - 例如：`WORK_RECORD_SERVER_PORT=9090`
+
+2. **环境特定配置文件**
+   - development.json 或 production.json
+
+3. **主配置文件**（最低优先级）
+   - app.json
+
+### 主要配置项
+
+#### 服务器配置 (server)
+```json
+{
+  "server": {
+    "host": "0.0.0.0",
+    "port": 8080,
+    "static_dir": "./static"
+  }
+}
+```
+
+#### 数据库配置 (database)
+```json
+{
+  "database": {
+    "path": "db/work_record.db"
+  }
+}
+```
+
+#### 日志配置 (logging)
+```json
+{
+  "logging": {
+    "level": "info",
+    "file": "logs/app.log",
+    "console_enabled": true,
+    "file_enabled": true
+  }
+}
+```
+
+#### 上传配置 (upload)
+```json
+{
+  "upload": {
+    "base_dir": "./static/upload",
+    "max_file_size": 104857600,
+    "organize_by_year": true,
+    "organize_by_requirement": true
+  }
+}
+```
+
+### 环境变量示例
+
+```bash
+# 设置服务器端口
+export WORK_RECORD_SERVER_PORT=9090
+
+# 设置数据库路径
+export WORK_RECORD_DATABASE_PATH=/data/work_record.db
+
+# 设置日志级别
+export WORK_RECORD_LOGGING_LEVEL=debug
+
+# 设置最大文件大小 (100MB)
+export WORK_RECORD_UPLOAD_MAX_FILE_SIZE=104857600
+```
+
+### 配置验证
+
+程序启动时会自动验证必需配置项：
+- server.port
+- server.host
+- database.path
+- upload.base_dir
+
+如果验证失败，程序会输出错误信息并退出。
 
 ---
 
@@ -271,9 +373,14 @@ sqlite3 db/work_record.db < update_database.sql
 - **依赖库缺失**：所有第三方库已包含在 `third_party/` 目录中
 
 ### 运行问题
-- **端口冲突**：如8080端口被占用，可在 `main.cpp` 修改监听端口
+- **端口冲突**：如8080端口被占用，可通过配置文件或环境变量修改：
+  ```bash
+  # 方法1：修改 config/development.json 中的 server.port
+  # 方法2：设置环境变量 WORK_RECORD_SERVER_PORT=9090
+  ```
 - **数据库连接失败**：检查 `db/` 目录权限和数据库文件完整性
 - **文件上传失败**：检查 `upload/` 目录权限
+- **配置验证失败**：检查必需配置项是否完整，查看启动日志确认配置加载情况
 
 ### 数据问题
 - **数据库升级**：升级脚本如遇外键约束问题，请先备份数据
@@ -284,6 +391,7 @@ sqlite3 db/work_record.db < update_database.sql
 ## 开发指南
 
 ### 代码结构
+- **Config层**：配置中心，负责配置管理和环境适配
 - **DAO层**：数据访问层，负责数据库操作
 - **Service层**：业务逻辑层，处理业务规则
 - **Util层**：工具类，提供通用功能
@@ -297,6 +405,12 @@ sqlite3 db/work_record.db < update_database.sql
 5. 在 `src/service/` 中实现业务逻辑
 6. 在 `main.cpp` 中添加API路由
 7. 在 `static/pages/work/` 中添加前端页面
+
+### 配置管理
+- 新增配置项时，在 `config/app.json` 中添加默认值
+- 环境特定配置在 `config/development.json` 或 `config/production.json` 中覆盖
+- 敏感配置可通过环境变量设置，格式为 `WORK_RECORD_配置键`
+- 配置验证逻辑在 `src/config/ConfigManager.cpp` 的 `validate()` 方法中
 
 ---
 

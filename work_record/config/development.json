@@ -1,0 +1,30 @@
+{
+  "app": {
+    "environment": "development"
+  },
+  "server": {
+    "host": "localhost",
+    "port": 8080,
+    "thread_pool_size": 2
+  },
+  "database": {
+    "path": "db/work_record_dev.db",
+    "backup_enabled": false
+  },
+  "logging": {
+    "level": "debug",
+    "console_enabled": true,
+    "file_enabled": true
+  },
+  "security": {
+    "cors_enabled": true,
+    "rate_limit_enabled": false
+  },
+  "features": {
+    "audit_log_enabled": true,
+    "backup_enabled": false
+  },
+  "performance": {
+    "cache_enabled": false
+  }
+} 

@@ -1,41 +1,45 @@
 @echo off
+REM Set UTF-8 encoding
 chcp 65001 >nul
+REM Set console output encoding
+powershell -Command "[Console]::OutputEncoding = [System.Text.Encoding]::UTF8" >nul 2>&1
+
 pushd %~dp0
 
-echo [INFO] 开始 CMake 构建...
+echo [INFO] Starting CMake build...
 
-REM 创建构建目录
+REM Create build directory
 if not exist build_cmake mkdir build_cmake
 cd build_cmake
 
-REM 配置项目
-echo [INFO] 配置项目...
+REM Configure project
+echo [INFO] Configuring project...
 cmake .. -G "MinGW Makefiles" -DCMAKE_BUILD_TYPE=Release
 if errorlevel 1 (
-    echo [ERROR] CMake 配置失败
+    echo [ERROR] CMake configuration failed
     popd
     exit /b 1
 )
 
-REM 编译项目
-echo [INFO] 编译项目...
+REM Build project
+echo [INFO] Building project...
 cmake --build . --config Release
 if errorlevel 1 (
-    echo [ERROR] 编译失败
+    echo [ERROR] Build failed
     popd
     exit /b 1
 )
 
-echo [OK] 构建成功！
-echo [INFO] 可执行文件位置: build_cmake\bin\work_record.exe
+echo [OK] Build successful!
+echo [INFO] Executable location: build_cmake\bin\work_record.exe
 
-REM 返回上级目录
+REM Return to parent directory
 cd ..
 
-REM 询问是否运行程序
-set /p choice="是否运行程序？(y/n): "
+REM Ask if run program
+set /p choice="Run program? (y/n): "
 if /i "%choice%"=="y" (
-    echo [INFO] 启动程序...
+    echo [INFO] Starting program...
     cd build_cmake\bin
     work_record.exe
     cd ..\..

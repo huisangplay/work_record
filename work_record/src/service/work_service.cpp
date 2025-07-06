@@ -19,6 +19,7 @@
 #include "util/dao_util.h"
 #include "util/log_util.h"
 #include "util/response_util.h"
+#include "config/ConfigManager.h"
 #include <filesystem>
 using namespace httplib;
 using namespace dao_util;
@@ -60,13 +61,26 @@ void get_work_records(const Request& req, Response& res) {
         }
 
         // ==== 创建上传目录 ====
+        ConfigManager& config = ConfigManager::getInstance();
+        std::string uploadBaseDir = config.getString("upload.base_dir", constants_upload::STATIC_UPLOAD_DIR);
+        bool organizeByYear = config.getBool("upload.organize_by_year", true);
+        bool organizeByRequirement = config.getBool("upload.organize_by_requirement", true);
+        
         time_t now = time(nullptr);
         tm* t = localtime(&now);
         char year[8];
         strftime(year, sizeof(year), "%Y", t);
         std::string safeYear = year;
         std::string safeTitle = sanitizeFilename(reqInfo.title);
-        std::string uploadDir = std::string(constants_upload::STATIC_UPLOAD_DIR) + safeYear + "/" + safeTitle;
+        
+        std::string uploadDir = uploadBaseDir;
+        if (organizeByYear) {
+            uploadDir += safeYear + "/";
+        }
+        if (organizeByRequirement) {
+            uploadDir += safeTitle + "/";
+        }
+        
         if (!createDirectory(uploadDir)) {
             spdlog::error("无法创建上传目录: {}", uploadDir);
             send_operation_failed(res, "创建", "上传目录");
@@ -77,14 +91,14 @@ void get_work_records(const Request& req, Response& res) {
         int64_t newWorkId = 0;
         auto workResult = insertWorkRecord(db, newRecord, newWorkId);
         if (workResult != DaoResult::SUCCESS) {
-            spdlog::error("工单插入失败，需求ID: {}", newRecord.requirement_id);
-            send_operation_failed(res, "插入", "工单");
+            spdlog::error("工作记录插入失败，需求ID: {}", newRecord.requirement_id);
+            send_operation_failed(res, "插入", "工作记录");
             return;
         }
         newRecord.id = newWorkId;
         if (newRecord.id <= 0) {
-            spdlog::error("新建工单ID无效: {}", newRecord.id);
-            send_operation_failed(res, "创建", "工单ID");
+            spdlog::error("新建工作记录ID无效: {}", newRecord.id);
+            send_operation_failed(res, "创建", "工作记录ID");
             return;
         }
         
@@ -102,7 +116,18 @@ void get_work_records(const Request& req, Response& res) {
             }
             FileRecord fileRec;
             fileRec.file_name = file.filename;
-            fileRec.file_path = "/upload/" + safeYear + "/" + safeTitle + "/" + safeName;
+            
+            // 构建相对路径
+            std::string relativePath = "/upload/";
+            if (organizeByYear) {
+                relativePath += safeYear + "/";
+            }
+            if (organizeByRequirement) {
+                relativePath += safeTitle + "/";
+            }
+            relativePath += safeName;
+            fileRec.file_path = relativePath;
+            
             int64_t fileId = 0;
             auto fileResult = insertFileRecord(db, fileRec, fileId);
             if (fileResult != DaoResult::SUCCESS) {
@@ -115,8 +140,8 @@ void get_work_records(const Request& req, Response& res) {
             // 建立关联
             auto relResult = insertWorkFileRel(db, newRecord.id, fileId);
             if (relResult != DaoResult::SUCCESS) {
-                spdlog::error("工单文件关联失败，工单ID: {}, 文件ID: {}", newRecord.id, fileId);
-                send_operation_failed(res, "关联", "工单文件");
+                spdlog::error("工作记录文件关联失败，工作记录ID: {}, 文件ID: {}", newRecord.id, fileId);
+                send_operation_failed(res, "关联", "工作记录文件");
                 return;
             }
             
@@ -124,7 +149,7 @@ void get_work_records(const Request& req, Response& res) {
         }
         
         send_success(res, json{{"id", newRecord.id}});
-        spdlog::info("新建工单成功，ID: {}, 需求ID: {}", newRecord.id, newRecord.requirement_id);
+        spdlog::info("新建工作记录成功，ID: {}, 需求ID: {}", newRecord.id, newRecord.requirement_id);
         
     } catch (const std::exception& e) {
         log_util::log_exception(e, "get_work_records");
@@ -184,7 +209,7 @@ void get_work_record_by_id(const Request& req, Response& res) {
     }
 }
 
-// 获取所有工单接口重构
+// 获取所有工作记录接口重构
 void get_all_work_records(const Request& req, Response& res) {
     int page = 1, page_size = 20, total = 0;
     std::string scope = req.has_param("scope") ? req.get_param_value("scope") : "";
@@ -235,14 +260,14 @@ void get_all_work_records(const Request& req, Response& res) {
     send_success(res, resp);
 }
 
-// 查询工单状态字典重构
+// 查询工作记录状态字典重构
 void get_work_record_status_dict(const Request& req, Response& res) {
     try {
         std::vector<WorkRecordStatusDict> list;
         auto result = queryAllWorkRecordStatusDict(db, list);
         if (result != DaoResult::SUCCESS) {
-            spdlog::error("获取工单状态字典失败");
-            send_operation_failed(res, "获取", "工单状态字典");
+            spdlog::error("获取工作记录状态字典失败");
+            send_operation_failed(res, "获取", "工作记录状态字典");
             return;
         }
         nlohmann::json arr = nlohmann::json::array();
@@ -254,7 +279,7 @@ void get_work_record_status_dict(const Request& req, Response& res) {
             });
         }
         send_data_direct(res, arr);
-        spdlog::info("获取工单状态字典成功，数量: {}", list.size());
+        spdlog::info("获取工作记录状态字典成功，数量: {}", list.size());
     } catch (const std::exception& e) {
         log_util::log_exception(e, "get_work_record_status_dict");
         send_internal_error(res);
@@ -262,7 +287,7 @@ void get_work_record_status_dict(const Request& req, Response& res) {
 }
 
 
-// 删除工单接口重构
+// 删除工作记录接口重构
 void delete_work_record(const Request& req, Response& res) {
     try {
         int id = std::stoi(req.matches[1]);
@@ -271,8 +296,8 @@ void delete_work_record(const Request& req, Response& res) {
         std::vector<std::pair<int, std::string>> fileInfos;
         sqlite3_stmt* selStmt = nullptr;
         if (sqlite3_prepare_v2(db, constants_sql::SQL_SELECT_WORK_FILES, -1, &selStmt, nullptr) != SQLITE_OK) {
-            spdlog::error("删除工单失败，SQL预处理失败，工单ID: {}", id);
-            send_operation_failed(res, "删除", "工单");
+            spdlog::error("删除工作记录失败，SQL预处理失败，工作记录ID: {}", id);
+            send_operation_failed(res, "删除", "工作记录");
             return;
         }
         sqlite3_bind_int(selStmt, 1, id);
@@ -286,8 +311,8 @@ void delete_work_record(const Request& req, Response& res) {
         // 删除 work_record_files 关联
         auto relResult = deleteWorkFileRelByWork(db, id);
         if (relResult != DaoResult::SUCCESS) {
-            spdlog::error("删除工单文件关联失败，工单ID: {}", id);
-            send_operation_failed(res, "删除", "工单");
+            spdlog::error("删除工作记录文件关联失败，工作记录ID: {}", id);
+            send_operation_failed(res, "删除", "工作记录");
             return;
         }
         
@@ -321,21 +346,21 @@ void delete_work_record(const Request& req, Response& res) {
         // 删除 work_record 主表记录
         sqlite3_stmt* delStmt = nullptr;
         if (sqlite3_prepare_v2(db, "DELETE FROM work_record WHERE id = ?;", -1, &delStmt, nullptr) != SQLITE_OK) {
-            spdlog::error("删除工单主记录失败，SQL预处理失败，工单ID: {}", id);
-            send_operation_failed(res, "删除", "工单");
+            spdlog::error("删除工作记录主记录失败，SQL预处理失败，工作记录ID: {}", id);
+            send_operation_failed(res, "删除", "工作记录");
             return;
         }
         sqlite3_bind_int(delStmt, 1, id);
         if (sqlite3_step(delStmt) != SQLITE_DONE) {
-            spdlog::error("删除工单主记录失败，工单ID: {}", id);
+            spdlog::error("删除工作记录主记录失败，工作记录ID: {}", id);
             sqlite3_finalize(delStmt);
-            send_operation_failed(res, "删除", "工单");
+            send_operation_failed(res, "删除", "工作记录");
             return;
         }
         sqlite3_finalize(delStmt);
         
         send_success(res);
-        spdlog::info("删除工单成功，ID: {}", id);
+        spdlog::info("删除工作记录成功，ID: {}", id);
         
     } catch (const std::exception& e) {
         log_util::log_exception(e, "delete_work_record");
@@ -348,25 +373,38 @@ void upload_work_record_file(const Request& req, Response& res) {
     try {
         int id = std::stoi(req.matches[1]);
         
-        // 查找工单及需求标题
+        // 查找工作记录及需求标题
         WorkRecord record;
         RequirementRecord reqInfo;
         auto workResult = getWorkRecordById(db, id, record);
         auto reqResult = getRequirementById(db, record.requirement_id, reqInfo);
         if (workResult != DaoResult::SUCCESS || reqResult != DaoResult::SUCCESS) {
-            spdlog::error("工单不存在，工单ID: {}", id);
-            send_not_found(res, "工单不存在");
+            spdlog::error("工作记录不存在，工作记录ID: {}", id);
+            send_not_found(res, "工作记录不存在");
             return;
         }
         
-        // 目录 static/upload/今年/需求标题/
+        // 目录配置
+        ConfigManager& config = ConfigManager::getInstance();
+        std::string uploadBaseDir = config.getString("upload.base_dir", constants_upload::STATIC_UPLOAD_DIR);
+        bool organizeByYear = config.getBool("upload.organize_by_year", true);
+        bool organizeByRequirement = config.getBool("upload.organize_by_requirement", true);
+        
         time_t now = time(nullptr);
         tm* t = localtime(&now);
         char year[8];
         strftime(year, sizeof(year), "%Y", t);
         std::string safeYear = sanitizeFilename(std::string(year));
         std::string safeTitle = sanitizeFilename(reqInfo.title);
-        std::string uploadDir = std::string(constants_upload::STATIC_UPLOAD_DIR) + safeYear + "/" + safeTitle;
+        
+        std::string uploadDir = uploadBaseDir;
+        if (organizeByYear) {
+            uploadDir += safeYear + "/";
+        }
+        if (organizeByRequirement) {
+            uploadDir += safeTitle + "/";
+        }
+        
         if (!createDirectory(uploadDir)) {
             spdlog::error("无法创建上传目录: {}", uploadDir);
             send_operation_failed(res, "创建", "上传目录");
@@ -375,7 +413,18 @@ void upload_work_record_file(const Request& req, Response& res) {
         
         const auto &files = req.get_file_values("files");
         std::vector<int> fileIds;
+        
+        // 检查文件大小限制
+        int maxFileSize = config.getInt("upload.max_file_size", 100 * 1024 * 1024); // 默认100MB
+        
         for (const auto& file : files) {
+            // 检查文件大小
+            if (file.content.length() > maxFileSize) {
+                spdlog::error("文件大小超过限制: {} > {}", file.content.length(), maxFileSize);
+                send_operation_failed(res, "上传", "文件（大小超限）");
+                return;
+            }
+            
             fs::path origPath(file.filename);
             std::string base = sanitizeFilename(origPath.stem().string());
             std::string ext = origPath.extension().string();
@@ -388,7 +437,18 @@ void upload_work_record_file(const Request& req, Response& res) {
             }
             FileRecord fileRec;
             fileRec.file_name = file.filename;
-            fileRec.file_path = "/upload/" + safeYear + "/" + safeTitle + "/" + safeName;
+            
+            // 构建相对路径
+            std::string relativePath = "/upload/";
+            if (organizeByYear) {
+                relativePath += safeYear + "/";
+            }
+            if (organizeByRequirement) {
+                relativePath += safeTitle + "/";
+            }
+            relativePath += safeName;
+            fileRec.file_path = relativePath;
+            
             int64_t fileId = 0;
             auto fileResult = insertFileRecord(db, fileRec, fileId);
             if (fileResult != DaoResult::SUCCESS) {
@@ -403,14 +463,14 @@ void upload_work_record_file(const Request& req, Response& res) {
         for (int fileId : fileIds) {
             auto relResult = insertWorkFileRel(db, id, fileId);
             if (relResult != DaoResult::SUCCESS) {
-                spdlog::error("工单文件关联失败，工单ID: {}, 文件ID: {}", id, fileId);
-                send_operation_failed(res, "关联", "工单文件");
+                spdlog::error("工作记录文件关联失败，工作记录ID: {}, 文件ID: {}", id, fileId);
+                send_operation_failed(res, "关联", "工作记录文件");
                 return;
             }
         }
         
         send_success(res);
-        spdlog::info("工单上传文件成功，工单ID: {}, 文件数量: {}", id, fileIds.size());
+        spdlog::info("工作记录上传文件成功，工作记录ID: {}, 文件数量: {}", id, fileIds.size());
         
     } catch (const std::exception& e) {
         log_util::log_exception(e, "upload_work_record_file");
@@ -507,12 +567,12 @@ void delete_file(const Request& req, Response& res) {
     }
 }
 
-// 更新工单接口（支持字段和文件）
+// 更新工作记录接口（支持字段和文件）
 void update_work_record(const Request& req, Response& res) {
     try {
         WorkRecord record;
         if (!req.has_file("id")) {
-            spdlog::error("更新工单失败，缺少ID参数");
+            spdlog::error("更新工作记录失败，缺少ID参数");
             send_bad_request(res, "缺少ID参数");
             return;
         }
@@ -576,12 +636,15 @@ void update_work_record(const Request& req, Response& res) {
 
         // 2. 处理新上传文件（直接保存并建立关联）
         std::vector<int> newFileIds;
+        ConfigManager& config = ConfigManager::getInstance();
+        bool organizeByYear = config.getBool("upload.organize_by_year", true);
+        bool organizeByRequirement = config.getBool("upload.organize_by_requirement", true);
         if (req.has_file("files")) {
             RequirementRecord reqInfo;
             auto reqResult = getRequirementById(db, record.requirement_id, reqInfo);
             if (reqResult != DaoResult::SUCCESS) {
-                spdlog::error("更新工单失败，无效的需求ID: {}", record.requirement_id);
-                send_operation_failed(res, "更新", "工单");
+                spdlog::error("更新工作记录失败，无效的需求ID: {}", record.requirement_id);
+                send_operation_failed(res, "更新", "工作记录");
                 return;
             }
             
@@ -593,7 +656,7 @@ void update_work_record(const Request& req, Response& res) {
             std::string safeTitle = sanitizeFilename(reqInfo.title);
             std::string uploadDir = std::string(constants_upload::STATIC_UPLOAD_DIR) + safeYear + "/" + safeTitle;
             if (!createDirectory(uploadDir)) {
-                spdlog::error("更新工单失败，无法创建上传目录: {}", uploadDir);
+                spdlog::error("更新工作记录失败，无法创建上传目录: {}", uploadDir);
                 send_operation_failed(res, "创建", "上传目录");
                 return;
             }
@@ -606,26 +669,37 @@ void update_work_record(const Request& req, Response& res) {
                 std::string safeName = base + "_" + std::to_string(time(nullptr)) + ext;
                 std::string fullPath = uploadDir + "/" + safeName;
                 if (!writeBinaryFile(fullPath, file.content)) {
-                    spdlog::error("更新工单失败，无法写入文件: {}", fullPath);
+                    spdlog::error("更新工作记录失败，无法写入文件: {}", fullPath);
                     send_operation_failed(res, "写入", "文件");
                     return;
                 }
                 
                 FileRecord fileRec;
                 fileRec.file_name = file.filename;
-                fileRec.file_path = "/upload/" + safeYear + "/" + safeTitle + "/" + safeName;
+                
+                // 构建相对路径
+                std::string relativePath = "/upload/";
+                if (organizeByYear) {
+                    relativePath += safeYear + "/";
+                }
+                if (organizeByRequirement) {
+                    relativePath += safeTitle + "/";
+                }
+                relativePath += safeName;
+                fileRec.file_path = relativePath;
+                
                 int64_t fileId = 0;
                 auto fileResult = insertFileRecord(db, fileRec, fileId);
                 if (fileResult != DaoResult::SUCCESS) {
-                    spdlog::error("更新工单失败，文件记录创建失败，文件名: {}", file.filename);
+                    spdlog::error("更新工作记录失败，文件记录创建失败，文件名: {}", file.filename);
                     send_operation_failed(res, "创建", "文件记录");
                     return;
                 }
                 
                 auto relResult = insertWorkFileRel(db, record.id, fileId);
                 if (relResult != DaoResult::SUCCESS) {
-                    spdlog::error("更新工单失败，工单文件关联失败，工单ID: {}, 文件ID: {}", record.id, fileId);
-                    send_operation_failed(res, "关联", "工单文件");
+                    spdlog::error("更新工作记录失败，工作记录文件关联失败，工作记录ID: {}, 文件ID: {}", record.id, fileId);
+                    send_operation_failed(res, "关联", "工作记录文件");
                     return;
                 }
                 
@@ -641,7 +715,7 @@ void update_work_record(const Request& req, Response& res) {
                 int id = std::stoi(newIdsStr.substr(0, pos));
                 auto relResult = insertWorkFileRel(db, record.id, id);
                 if (relResult != DaoResult::SUCCESS) {
-                    spdlog::error("更新工单失败，关联现有文件失败，工单ID: {}, 文件ID: {}", record.id, id);
+                    spdlog::error("更新工作记录失败，关联现有文件失败，工作记录ID: {}, 文件ID: {}", record.id, id);
                 }
                 newIdsStr.erase(0, pos + 1);
             }
@@ -649,12 +723,12 @@ void update_work_record(const Request& req, Response& res) {
                 int id = std::stoi(newIdsStr);
                 auto relResult = insertWorkFileRel(db, record.id, id);
                 if (relResult != DaoResult::SUCCESS) {
-                    spdlog::error("更新工单失败，关联现有文件失败，工单ID: {}, 文件ID: {}", record.id, id);
+                    spdlog::error("更新工作记录失败，关联现有文件失败，工作记录ID: {}, 文件ID: {}", record.id, id);
                 }
             }
         }
         
-        // 4. 更新工单其它字段
+        // 4. 更新工作记录其它字段
         if (req.has_file("completion_time")) {
             record.completion_time = req.get_file_value("completion_time").content;
         }
@@ -667,13 +741,13 @@ void update_work_record(const Request& req, Response& res) {
         
         auto updateResult = updateWorkRecord(db, record);
         if (updateResult != DaoResult::SUCCESS) {
-            spdlog::error("更新工单失败，工单ID: {}", record.id);
-            send_operation_failed(res, "更新", "工单");
+            spdlog::error("更新工作记录失败，工作记录ID: {}", record.id);
+            send_operation_failed(res, "更新", "工作记录");
             return;
         }
         
         send_success(res, json{{"new_file_ids", newFileIds}});
-        spdlog::info("更新工单成功，ID: {}", record.id);
+        spdlog::info("更新工作记录成功，ID: {}", record.id);
         
     } catch (const std::exception& e) {
         log_util::log_exception(e, "update_work_record");
